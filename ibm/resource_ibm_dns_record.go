@@ -216,13 +216,11 @@ func resourceIBMDNSRecordCreate(d *schema.ResourceData, meta interface{}) error 
 			optsSrv.Protocol = sl.String(protocol.(string))
 		}
 
-		if priority, ok := d.GetOk("priority"); ok {
-			optsSrv.Priority = sl.Int(priority.(int))
-		}
+		priority, _ := d.GetOk("priority")
+		optsSrv.Priority = sl.Int(priority.(int))
 
-		if weight, ok := d.GetOk("weight"); ok {
-			optsSrv.Weight = sl.Int(weight.(int))
-		}
+		weight, _ := d.GetOk("weight")
+		optsSrv.Weight = sl.Int(weight.(int))
 
 		if port, ok := d.GetOk("port"); ok {
 			optsSrv.Port = sl.Int(port.(int))

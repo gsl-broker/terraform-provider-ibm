@@ -292,6 +292,19 @@ resource "ibm_dns_record" "recordSRV" {
 	weight = 3
 	service = "_mail"
 }
+resource "ibm_dns_record" "recordSRV0" {
+    data = "ns2.example.org"
+    domain_id = "${ibm_dns_domain.test_dns_domain_record_types.id}"
+    host = "hosta-srv0.com"
+    responsible_person = "user@softlayer.com"
+    ttl = 900
+    type = "srv"
+	port = 8080
+	priority = 0
+	protocol = "%s"
+	weight = 0
+	service = "_mail"
+}
 `
 
 func testAccCheckIBMDNSRecordWithTag(domainName, hostname string) string {
