@@ -16,9 +16,9 @@ func TestAccIBMBandwidthPool_Basic(t *testing.T) {
 	var bwPool datatypes.Network_Bandwidth_Version1_Allotment
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckIBMBandwidthPooDestroy,
+		PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		//CheckDestroy: testAccCheckIBMBandwidthPooDestroy,
 		Steps: []resource.TestStep{
 			resource.TestStep{
 				Config: testAccCheckIBMBandwidthPool_basic,
@@ -38,27 +38,27 @@ func TestAccIBMBandwidthPool_Basic(t *testing.T) {
 	})
 }
 
-func testAccCheckIBMBandwidthPooDestroy(s *terraform.State) error {
-	service := services.GetNetworkBandwidthVersion1AllotmentService(testAccProvider.Meta().(ClientSession).SoftLayerSession())
+// func testAccCheckIBMBandwidthPooDestroy(s *terraform.State) error {
+// 	service := services.GetNetworkBandwidthVersion1AllotmentService(testAccProvider.Meta().(ClientSession).SoftLayerSession())
 
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "ibm_bandwidth_pool" {
-			continue
-		}
-		bwID, err := strconv.Atoi(rs.Primary.ID)
-		if err != nil {
-			return err
-		}
-		// Try to find the domain
-		response, err := service.Id(bwID).GetObject()
-		fmt.Print(response)
-		if err == nil {
-			return fmt.Errorf("BW Pool with id %d still exists", bwID)
-		}
-	}
+// 	for _, rs := range s.RootModule().Resources {
+// 		if rs.Type != "ibm_bandwidth_pool" {
+// 			continue
+// 		}
+// 		bwID, err := strconv.Atoi(rs.Primary.ID)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		// Try to find the domain
+// 		response, err := service.Id(bwID).GetObject()
+// 		fmt.Print(response)
+// 		if err == nil {
+// 			return fmt.Errorf("BW Pool with id %d still exists", bwID)
+// 		}
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func testAccCheckIBMBandwidthPoolExists(n string, bwPool *datatypes.Network_Bandwidth_Version1_Allotment) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
