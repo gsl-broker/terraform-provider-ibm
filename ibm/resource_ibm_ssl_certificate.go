@@ -353,6 +353,7 @@ func resourceIBMSSLCertificate() *schema.Resource {
 									"admin_city": &schema.Schema{
 										Type:     schema.TypeString,
 										Optional: true,
+										Default:  "",
 									},
 
 									"admin_countryCode": &schema.Schema{
