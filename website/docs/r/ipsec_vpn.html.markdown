@@ -48,7 +48,7 @@ The following attributes are exported:
 
 * `id` - (Computed, string) The id of the IPSec VPN device that is created
 * `name` - (Computed, string) The name of the IPSec VPN device that is created
-* `internal_peer_ip_address` - (Required, string) The local  end of a network tunnel. This end of the network tunnel resides on the SoftLayer networks and allows access to remote end of the tunnel to subnets on SoftLayer networks.
+* `internal_peer_ip_address` - (Computed, string) The local  end of a network tunnel. This end of the network tunnel resides on the SoftLayer networks and allows access to remote end of the tunnel to subnets on SoftLayer networks.
 
 
 
