@@ -258,7 +258,7 @@ func resourceIBMSSLCertificate() *schema.Resource {
 								Schema: map[string]*schema.Schema{
 									"billing_addressLine1": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"billing_addressLine2": &schema.Schema{
@@ -268,48 +268,48 @@ func resourceIBMSSLCertificate() *schema.Resource {
 
 									"billing_city": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"billing_countryCode": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"billing_postalCode": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"billing_state": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 								},
 							},
 						},
 						"billing_organizationName": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"billing_firstName": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"billing_lastName": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"billing_emailAddress": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"billing_phoneNumber": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"billing_faxNumber": &schema.Schema{
@@ -319,7 +319,7 @@ func resourceIBMSSLCertificate() *schema.Resource {
 
 						"billing_title": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 					},
 				},
@@ -342,7 +342,7 @@ func resourceIBMSSLCertificate() *schema.Resource {
 								Schema: map[string]*schema.Schema{
 									"admin_addressLine1": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"admin_addressLine2": &schema.Schema{
@@ -352,48 +352,48 @@ func resourceIBMSSLCertificate() *schema.Resource {
 
 									"admin_city": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"admin_countryCode": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"admin_postalCode": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"admin_state": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 								},
 							},
 						},
 						"admin_organizationName": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"admin_firstName": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"admin_lastName": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"admin_emailAddress": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"admin_phoneNumber": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"admin_faxNumber": &schema.Schema{
 							Type:     schema.TypeString,
@@ -401,7 +401,7 @@ func resourceIBMSSLCertificate() *schema.Resource {
 						},
 						"admin_title": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 					},
 				},
