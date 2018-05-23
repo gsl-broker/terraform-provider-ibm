@@ -162,11 +162,8 @@ func Provider() terraform.ResourceProvider {
 			"ibm_ipsec_vpn":                        resourceIBMIPSecVPN(),
 			"ibm_dns_reverse_record":               resourceIBMDNSREVERSERecord(),
 			"ibm_ssl_certificate":                  resourceIBMSSLCertificate(),
-<<<<<<< HEAD
 			"ibm_bandwidth_pool":                   resourceIBMBandwidthPool(),
-=======
 			"ibm_firewall_shared":                  resourceIBMFirewallShared(),
->>>>>>> 6318bb8e39a0bda78272ba90b242574c26980e9d
 		},
 
 		ConfigureFunc: providerConfigure,
