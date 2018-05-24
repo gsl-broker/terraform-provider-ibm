@@ -175,7 +175,7 @@ func resourceIBMSSLCertificate() *schema.Resource {
 								Schema: map[string]*schema.Schema{
 									"tech_addressLine1": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"tech_addressLine2": &schema.Schema{
@@ -185,22 +185,22 @@ func resourceIBMSSLCertificate() *schema.Resource {
 
 									"tech_city": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"tech_countryCode": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"tech_postalCode": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"tech_state": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 								},
 							},
