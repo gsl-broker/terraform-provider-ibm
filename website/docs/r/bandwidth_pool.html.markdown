@@ -13,7 +13,7 @@ This resource is used to order a Bandwidth Pool.
 ## Example Usage
 
 ```hcl
-resource "ibm_cdn" "test_cdn1" resource "ibm_bandwidth_pool" "bw_pool" {
+resource "ibm_bandwidth_pool" "bw_pool" {
 	name="a-resource-to-mod"
 	locationGroupId=1
 	bandwidthAllotmentTypeId=2
