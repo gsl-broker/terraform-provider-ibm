@@ -24,8 +24,7 @@ func resourceIBMBandwidthPool() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"accountId": &schema.Schema{
 				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  1521909,
+				Required: true,
 			},
 			"bandwidthAllotmentTypeId": &schema.Schema{
 				Type:     schema.TypeInt,

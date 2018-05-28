@@ -97,5 +97,5 @@ resource "ibm_bandwidth_pool" "BWPool_first" {
 	name="Checkdelete1"
 	locationGroupId=1
 	bandwidthAllotmentTypeId=2
-	accountId=1521909
+	accountId=123456
 	}`
