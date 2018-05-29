@@ -92,6 +92,18 @@ func resourceIBMSSLCertificate() *schema.Resource {
 				Default:  false,
 			},
 
+			"administrativeAddressSameAsOrganizationFlag": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+
+			"billingAddressSameAsOrganizationFlag": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+
 			"organizationInformation": {
 				Type:     schema.TypeSet,
 				Required: true,
@@ -662,16 +674,30 @@ func buildSSLProductOrderContainer(d *schema.ResourceData, sess *session1.Sessio
 		PostalCode:   &admin_postalCode,
 		State:        &admin_state,
 	}
-
-	administrative_contact_attr := datatypes.Container_Product_Order_Attribute_Contact{
-		Address:          &administrative_address_information,
-		EmailAddress:     &admin_emailAddress,
-		FirstName:        &admin_firstName,
-		LastName:         &admin_lastName,
-		OrganizationName: &admin_organizationName,
-		PhoneNumber:      &admin_phoneNumber,
-		FaxNumber:        &admin_faxNumber,
-		Title:            &admin_title,
+	administrativeAddressSameAsOrg := d.Get("administrativeAddressSameAsOrganizationFlag").(bool)
+	var administrative_contact_attr datatypes.Container_Product_Order_Attribute_Contact
+	if administrativeAddressSameAsOrg {
+		administrative_contact_attr = datatypes.Container_Product_Order_Attribute_Contact{
+			Address:          &org_address_information,
+			EmailAddress:     &admin_emailAddress,
+			FirstName:        &admin_firstName,
+			LastName:         &admin_lastName,
+			OrganizationName: &admin_organizationName,
+			PhoneNumber:      &admin_phoneNumber,
+			FaxNumber:        &admin_faxNumber,
+			Title:            &admin_title,
+		}
+	} else {
+		administrative_contact_attr = datatypes.Container_Product_Order_Attribute_Contact{
+			Address:          &administrative_address_information,
+			EmailAddress:     &admin_emailAddress,
+			FirstName:        &admin_firstName,
+			LastName:         &admin_lastName,
+			OrganizationName: &admin_organizationName,
+			PhoneNumber:      &admin_phoneNumber,
+			FaxNumber:        &admin_faxNumber,
+			Title:            &admin_title,
+		}
 	}
 
 	billingContactList := d.Get("billingContact").(*schema.Set).List()
@@ -704,16 +730,30 @@ func buildSSLProductOrderContainer(d *schema.ResourceData, sess *session1.Sessio
 		PostalCode:   &bill_postalCode,
 		State:        &bill_state,
 	}
-
-	billing_contact_attr := datatypes.Container_Product_Order_Attribute_Contact{
-		Address:          &billing_address_information,
-		EmailAddress:     &bill_emailAddress,
-		FirstName:        &bill_firstName,
-		LastName:         &bill_lastName,
-		OrganizationName: &bill_organizationName,
-		PhoneNumber:      &bill_phoneNumber,
-		FaxNumber:        &bill_faxNumber,
-		Title:            &bill_title,
+	billAddressSameAsOrg := d.Get("billingAddressSameAsOrganizationFlag").(bool)
+	var billing_contact_attr datatypes.Container_Product_Order_Attribute_Contact
+	if billAddressSameAsOrg {
+		billing_contact_attr = datatypes.Container_Product_Order_Attribute_Contact{
+			Address:          &org_address_information,
+			EmailAddress:     &bill_emailAddress,
+			FirstName:        &bill_firstName,
+			LastName:         &bill_lastName,
+			OrganizationName: &bill_organizationName,
+			PhoneNumber:      &bill_phoneNumber,
+			FaxNumber:        &bill_faxNumber,
+			Title:            &bill_title,
+		}
+	} else {
+		billing_contact_attr = datatypes.Container_Product_Order_Attribute_Contact{
+			Address:          &billing_address_information,
+			EmailAddress:     &bill_emailAddress,
+			FirstName:        &bill_firstName,
+			LastName:         &bill_lastName,
+			OrganizationName: &bill_organizationName,
+			PhoneNumber:      &bill_phoneNumber,
+			FaxNumber:        &bill_faxNumber,
+			Title:            &bill_title,
+		}
 	}
 
 	administrativeContactSameAsTechnical := d.Get("administrativeContactSameAsTechnicalFlag").(bool)
