@@ -25,10 +25,6 @@ func TestAccIBMBandwidthPool_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckIBMBandwidthPoolExists("ibm_bandwidth_pool.BWPool_first", &bwPool),
 					resource.TestCheckResourceAttr(
-						"ibm_bandwidth_pool.BWPool_first", "accountId", "1521909"),
-					resource.TestCheckResourceAttr(
-						"ibm_bandwidth_pool.BWPool_first", "bandwidthAllotmentTypeId", "2"),
-					resource.TestCheckResourceAttr(
 						"ibm_bandwidth_pool.BWPool_first", "name", "Checkdelete1"),
 					resource.TestCheckResourceAttr(
 						"ibm_bandwidth_pool.BWPool_first", "locationGroupId", "1"),
@@ -96,6 +92,4 @@ const testAccCheckIBMBandwidthPool_basic = `
 resource "ibm_bandwidth_pool" "BWPool_first" {
 	name="Checkdelete1"
 	locationGroupId=1
-	bandwidthAllotmentTypeId=2
-	accountId=123456
 	}`
