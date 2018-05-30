@@ -20,68 +20,46 @@ In the following example, you can use a certificate on file:
 resource "ibm_ssl_certificate" "my_ssllllll" {
   	certificateSigningRequest= "-----BEGIN CERTIFICATE REQUEST-----\nMIIC2jCCAcICAQAwgYAxCzAJBgNVBAYTAklOMRMwEQYDVQQIDApNYWhhcmFzaHRh\nMQ0wCwYDVQQHDARQdW5lMRAwDgYDVQQKDAdJQk1QdW5lMQwwCgYDVQQLDANJQk0x\nFDASBgNVBAMMC2libS5wdW5lLmluMRcwFQYJKoZIhvcNAQkBFghyYkBncy5pbjCC\nASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALZTfLDkU/q8ory+a+aBIAB7\nezyMbF4iqEpO3mVmlIfENBRq/MomhTiYID2jVWhPS4KytXa9bANgAG+NN5zMxqgH\nwUVa4fO2Th//o9RdRPZQcC3IGR+b3tpGSV+KxjsW9XV82lQp6l8HxfSBo12PZcwU\nlu53BXMiVKU6ZHSjz6eDF4MGTuPM1QWs/oexb9y6Yqqj2IicrkviJMuKhh0FN6H7\nXT2MHIF8OHT1xhs8w7U1SdUwhBa5dHvj7vqi33DU0p3s8JdXlzE9PUXKuAzXav1D\nngwE1iT5KFHkEFUr7plH5wGsy/y4tnu2xVzfGMyECS9EYmUtOA5M5RpqF5DdXGEC\nAwEAAaAUMBIGCSqGSIb3DQEJAjEFDANnc2wwDQYJKoZIhvcNAQELBQADggEBAGB7\n3lv/6fSn9rgTiHszLL9pOU9ytjOVrhNjFjDzQL73VQ0+Isb7aPHnWrLz4kT9m/60\nmgy/dHsOIF8KRP1LpOs5BYwlstD3Ss57XR8GatnrLMN4lZCjacL6A8RPhwr3x29W\nMyFntvu2caAL4ZpZpWMKHtoemXijCiFXa9Z4pZFBk4V7k0/DIEXEeyYazsSaXeTw\nXr4IFPmk7VS/NkLAht2hRhllN5NHGf/gzTsmgrgKclXtf1Z7EotnDTTIt0dFVtk1\nVX2Z7kvx9/QWbDVhPEz2uOrJnCoAm+0OpQfFc4THcP0uv0Y49B3WUG89mAjlWQKa\nU7hhc8gZ77+eaBQKD6k=\n-----END CERTIFICATE REQUEST-----"
 	organizationInformation = {
-		address = {
-			addressLine1= "abc"
-			addressLine2= "cms"
-			city="xyz"
-			countryCode= "AF"
-			state="OT"
-			postalCode= "411119"
+		org_address = {
+			org_addressLine1= "abc"
+			org_addressLine2= "cms"
+			org_city="xyz"
+			org_countryCode= "AF"
+			org_state="OT"
+			org_postalCode= "411119"
 		}
-		organizationName= "IBMPune"
-		phoneNumber= "9876543210"
+		org_organizationName= "IBMPune"
+		org_phoneNumber= "9876543210"
 	}	
-	technicalContactSameAsOrgAddressFlag = "false"
+	technicalContactSameAsOrgAddressFlag = "true"
 	technicalContact = {
-		address = {
-			addressLine1= "Baner"
-			addressLine2= "Mahalunge"
-			city="Pune"
-			countryCode= "AF"
-			state="OT"
-			postalCode= "411007"
-		}
-		organizationName= "IBMPune"
-		phoneNumber= "952741928"
-		firstName = "poy"
-		lastName = "joy"
-		emailAddress = "email.prefix@yahoo.com"
-		title= "something"
-	}
-	billingContact = {
-		address = {
-			addressLine1= "Baner"
-			addressLine2= "Mahalunge"
-			city="Pune"
-			countryCode= "AF"
-			state="OT"
-			postalCode= "411007"
-		}
-		organizationName= "IBMPune"
-		phoneNumber= "9876542102"
-		firstName = "pqr"
-		lastName = "qwe"
-		emailAddress = "email@domain.com"
-		title= "plzeru"
+		tech_organizationName= "IBMPune"
+		tech_phoneNumber= "952741928"
+		tech_firstName = "poy"
+		tech_lastName = "joy"
+		tech_emailAddress = "email.prefix@yahoo.com"
+		tech_title= "something"
 	}
 	administrativeContact = {
-		address = {
-			addressLine1= "Baner"
-			addressLine2= "Mahalunge"
-			city="Pune"
-			countryCode= "AF"
-			state="OT"
-			postalCode= "411007"
-		}
-		organizationName= "IBMPune"
-		phoneNumber= "952741928"
-		firstName = "lkj"
-		lastName = "ply"
-		emailAddress = "email.prefix@domain.com"
-		title= "see"
+		admin_organizationName= "IBMPune"
+		admin_phoneNumber= "952741928"
+		admin_firstName = "poy"
+		admin_lastName = "joy"
+		admin_emailAddress = "email.prefix@yahoo.com"
+		admin_title= "something"
+	}
+	billingContact = {
+		billing_organizationName= "IBMPune"
+		billing_phoneNumber= "952741928"
+		billing_firstName = "poy"
+		billing_lastName = "joy"
+		billing_emailAddress = "email.prefix@yahoo.com"
+		billing_title= "something"
 	}
 	administrativeContactSameAsTechnicalFlag = "false"
-	billingContactSameAsTechnicalFlag = "false"	
+	billingContactSameAsTechnicalFlag = "false"
+	administrativeAddressSameAsOrganizationFlag ="true"
+	billingAddressSameAsOrganizationFlag = "true"	
 	sslType="SSL_CERTIFICATE_QUICKSSL_PREMIUM_2_YEAR"
 	renewalFlag= true
 	serverCount= 1
@@ -143,5 +121,7 @@ The following arguments are supported:
 * `billing_title` - (Optional, string) The title for for billing contact.
 * `billing_emailAddress` -(Optional, string) email address for billing contact.
 * `technicalContactSameAsOrgAddressFlag` -(Optional, bool) If your organization address and technical contact address is the same make this flag as true and skip technical contact address details.
-* `administrativeContactSameAsTechnicalFlag` -(Optional, bool)- If your technical contact details and administrative contact details is the same then make this as true and skip details of administrative contact.
-* `billingContactSameAsTechnicalFlag` -(Optional, bool)- If your technical contact details and billing contact details is the same then make this as true and skip details of billing contact. 
+* `administrativeContactSameAsTechnicalFlag` -(Required, bool)- If your technical contact details and administrative contact details is the same then make this as true and skip details of administrative contact.
+* `billingContactSameAsTechnicalFlag` -(Required, bool)- If your technical contact details and billing contact details is the same then make this as true and skip details of billing contact. 
+* `administrativeAddressSameAsOrganizationFlag` -(Required,bool)If administrative address is same as organization address then make this flag as true and skip address details.
+* `billingAddressSameAsOrganizationFlag` -(Required,bool)If billing address is same as organization address then make this flag as true and skip address details. 
