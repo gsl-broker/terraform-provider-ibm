@@ -47,7 +47,7 @@ func resourceIBMBandwidthPoolCreate(d *schema.ResourceData, meta interface{}) er
 	// get the account Id
 	accountData, err := account.Mask("id").GetObject()
 	if err != nil {
-		return fmt.Errorf("%s", err)
+		return fmt.Errorf("Error retreiving Account Details: %s", err)
 	}
 	////pass the parameters to create bandwidth pool
 	receipt1, err := service.CreateObject(&datatypes.Network_Bandwidth_Version1_Allotment{
