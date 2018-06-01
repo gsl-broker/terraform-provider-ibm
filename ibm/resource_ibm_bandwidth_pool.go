@@ -22,17 +22,6 @@ func resourceIBMBandwidthPool() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"accountId": &schema.Schema{
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  1521909,
-			},
-			"bandwidthAllotmentTypeId": &schema.Schema{
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  2,
-			},
-
 			"name": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
@@ -50,16 +39,20 @@ func resourceIBMBandwidthPoolCreate(d *schema.ResourceData, meta interface{}) er
 	sess := meta.(ClientSession).SoftLayerSession()
 	log.Println("ordering bandwidth Pool service...")
 	///get the value of all the parameters
-	accountID := d.Get("accountId").(int)
-	bandwidthAllotmentTypeID := d.Get("bandwidthAllotmentTypeId").(int)
 	name := d.Get("name").(string)
 	locationGroupID := d.Get("locationGroupId").(int)
 	///creat an object of Bandwidth Pool service
 	service := services.GetNetworkBandwidthVersion1AllotmentService(sess)
-	//////pass the parameters to create bandwidth pool
+	account := services.GetAccountService(sess)
+	// get the account Id
+	accountData, err := account.Mask("id").GetObject()
+	if err != nil {
+		return fmt.Errorf("Error retreiving Account Details: %s", err)
+	}
+	////pass the parameters to create bandwidth pool
 	receipt1, err := service.CreateObject(&datatypes.Network_Bandwidth_Version1_Allotment{
-		AccountId:                sl.Int(accountID),
-		BandwidthAllotmentTypeId: sl.Int(bandwidthAllotmentTypeID),
+		AccountId:                sl.Int(*accountData.Id),
+		BandwidthAllotmentTypeId: sl.Int(2),
 		LocationGroupId:          sl.Int(locationGroupID),
 		Name:                     sl.String(name),
 	})
