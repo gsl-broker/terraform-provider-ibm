@@ -92,6 +92,18 @@ func resourceIBMSSLCertificate() *schema.Resource {
 				Default:  false,
 			},
 
+			"administrativeAddressSameAsOrganizationFlag": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+
+			"billingAddressSameAsOrganizationFlag": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+
 			"organizationInformation": {
 				Type:     schema.TypeSet,
 				Required: true,
@@ -175,7 +187,7 @@ func resourceIBMSSLCertificate() *schema.Resource {
 								Schema: map[string]*schema.Schema{
 									"tech_addressLine1": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"tech_addressLine2": &schema.Schema{
@@ -185,22 +197,22 @@ func resourceIBMSSLCertificate() *schema.Resource {
 
 									"tech_city": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"tech_countryCode": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"tech_postalCode": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"tech_state": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 								},
 							},
@@ -258,7 +270,7 @@ func resourceIBMSSLCertificate() *schema.Resource {
 								Schema: map[string]*schema.Schema{
 									"billing_addressLine1": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"billing_addressLine2": &schema.Schema{
@@ -268,48 +280,48 @@ func resourceIBMSSLCertificate() *schema.Resource {
 
 									"billing_city": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"billing_countryCode": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"billing_postalCode": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"billing_state": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 								},
 							},
 						},
 						"billing_organizationName": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"billing_firstName": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"billing_lastName": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"billing_emailAddress": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"billing_phoneNumber": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"billing_faxNumber": &schema.Schema{
@@ -319,7 +331,7 @@ func resourceIBMSSLCertificate() *schema.Resource {
 
 						"billing_title": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 					},
 				},
@@ -342,7 +354,7 @@ func resourceIBMSSLCertificate() *schema.Resource {
 								Schema: map[string]*schema.Schema{
 									"admin_addressLine1": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"admin_addressLine2": &schema.Schema{
@@ -352,48 +364,49 @@ func resourceIBMSSLCertificate() *schema.Resource {
 
 									"admin_city": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
+										Default:  "",
 									},
 
 									"admin_countryCode": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"admin_postalCode": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 
 									"admin_state": &schema.Schema{
 										Type:     schema.TypeString,
-										Required: true,
+										Optional: true,
 									},
 								},
 							},
 						},
 						"admin_organizationName": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"admin_firstName": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"admin_lastName": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"admin_emailAddress": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"admin_phoneNumber": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"admin_faxNumber": &schema.Schema{
 							Type:     schema.TypeString,
@@ -401,7 +414,7 @@ func resourceIBMSSLCertificate() *schema.Resource {
 						},
 						"admin_title": &schema.Schema{
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 					},
 				},
@@ -661,16 +674,30 @@ func buildSSLProductOrderContainer(d *schema.ResourceData, sess *session1.Sessio
 		PostalCode:   &admin_postalCode,
 		State:        &admin_state,
 	}
-
-	administrative_contact_attr := datatypes.Container_Product_Order_Attribute_Contact{
-		Address:          &administrative_address_information,
-		EmailAddress:     &admin_emailAddress,
-		FirstName:        &admin_firstName,
-		LastName:         &admin_lastName,
-		OrganizationName: &admin_organizationName,
-		PhoneNumber:      &admin_phoneNumber,
-		FaxNumber:        &admin_faxNumber,
-		Title:            &admin_title,
+	administrativeAddressSameAsOrg := d.Get("administrativeAddressSameAsOrganizationFlag").(bool)
+	var administrative_contact_attr datatypes.Container_Product_Order_Attribute_Contact
+	if administrativeAddressSameAsOrg {
+		administrative_contact_attr = datatypes.Container_Product_Order_Attribute_Contact{
+			Address:          &org_address_information,
+			EmailAddress:     &admin_emailAddress,
+			FirstName:        &admin_firstName,
+			LastName:         &admin_lastName,
+			OrganizationName: &admin_organizationName,
+			PhoneNumber:      &admin_phoneNumber,
+			FaxNumber:        &admin_faxNumber,
+			Title:            &admin_title,
+		}
+	} else {
+		administrative_contact_attr = datatypes.Container_Product_Order_Attribute_Contact{
+			Address:          &administrative_address_information,
+			EmailAddress:     &admin_emailAddress,
+			FirstName:        &admin_firstName,
+			LastName:         &admin_lastName,
+			OrganizationName: &admin_organizationName,
+			PhoneNumber:      &admin_phoneNumber,
+			FaxNumber:        &admin_faxNumber,
+			Title:            &admin_title,
+		}
 	}
 
 	billingContactList := d.Get("billingContact").(*schema.Set).List()
@@ -703,16 +730,30 @@ func buildSSLProductOrderContainer(d *schema.ResourceData, sess *session1.Sessio
 		PostalCode:   &bill_postalCode,
 		State:        &bill_state,
 	}
-
-	billing_contact_attr := datatypes.Container_Product_Order_Attribute_Contact{
-		Address:          &billing_address_information,
-		EmailAddress:     &bill_emailAddress,
-		FirstName:        &bill_firstName,
-		LastName:         &bill_lastName,
-		OrganizationName: &bill_organizationName,
-		PhoneNumber:      &bill_phoneNumber,
-		FaxNumber:        &bill_faxNumber,
-		Title:            &bill_title,
+	billAddressSameAsOrg := d.Get("billingAddressSameAsOrganizationFlag").(bool)
+	var billing_contact_attr datatypes.Container_Product_Order_Attribute_Contact
+	if billAddressSameAsOrg {
+		billing_contact_attr = datatypes.Container_Product_Order_Attribute_Contact{
+			Address:          &org_address_information,
+			EmailAddress:     &bill_emailAddress,
+			FirstName:        &bill_firstName,
+			LastName:         &bill_lastName,
+			OrganizationName: &bill_organizationName,
+			PhoneNumber:      &bill_phoneNumber,
+			FaxNumber:        &bill_faxNumber,
+			Title:            &bill_title,
+		}
+	} else {
+		billing_contact_attr = datatypes.Container_Product_Order_Attribute_Contact{
+			Address:          &billing_address_information,
+			EmailAddress:     &bill_emailAddress,
+			FirstName:        &bill_firstName,
+			LastName:         &bill_lastName,
+			OrganizationName: &bill_organizationName,
+			PhoneNumber:      &bill_phoneNumber,
+			FaxNumber:        &bill_faxNumber,
+			Title:            &bill_title,
+		}
 	}
 
 	administrativeContactSameAsTechnical := d.Get("administrativeContactSameAsTechnicalFlag").(bool)
