@@ -402,10 +402,11 @@ func resourceIBMComputeVmInstance() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Set:      schema.HashString,
 			},
+			//waiting time modified to 24 hours
 			"wait_time_minutes": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  90,
+				Default:  1440,
 			},
 			// Monthly only
 			// Limited BandWidth
