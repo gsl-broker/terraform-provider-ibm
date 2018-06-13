@@ -2,8 +2,8 @@ package ibm
 
 import (
 	"fmt"
-
 	"log"
+	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
@@ -26,7 +26,10 @@ func resourceIBMFirewallShared() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-
+			"billing_item_id": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
 			"firewall_type": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -129,50 +132,66 @@ func resourceIBMFirewallSharedCreate(d *schema.ResourceData, meta interface{}) e
 	d.Set("guest_id", machineId)
 	d.Set("guest_type", guestType)
 
+	log.Printf("[INFO] Wait one minute before fetching the firewall/device.")
+	time.Sleep(time.Second * 30)
+
 	return resourceIBMFirewallSharedRead(d, meta)
 }
 
 func resourceIBMFirewallSharedRead(d *schema.ResourceData, meta interface{}) error {
-
+	sess := meta.(ClientSession).SoftLayerSession()
 	macId := (d.Get("guest_id").(int))
 
 	guestType := (d.Get("guest_type").(string))
 
-	masked := "firewallServiceComponent"
+	masked := "firewallServiceComponent.id"
+
+	fservice := services.GetNetworkComponentFirewallService(sess)
 
 	if guestType == "virtual machine" {
 		service := services.GetVirtualGuestService(meta.(ClientSession).SoftLayerSession())
-
 		result, err := service.Id(macId).Mask(masked).GetObject()
 
 		if err != nil {
 			return fmt.Errorf("Error retrieving firewall information: %s", err)
 		}
+		idd := *result.FirewallServiceComponent.Id
+		d.SetId(fmt.Sprintf("%d", idd))
+		data, err := fservice.Id(idd).Mask("billingItem.id").GetObject()
 
-		log.Print(*result.FirewallServiceComponent.GuestNetworkComponent.Id)
-		d.SetId(fmt.Sprintf("%d", *result.FirewallServiceComponent.GuestNetworkComponent.Id))
+		d.Set("billing_item_id", *data.BillingItem.Id)
 
-		return nil
-	} else {
-		if guestType == "baremetal" {
-			service := services.GetHardwareService(meta.(ClientSession).SoftLayerSession())
+	} else if guestType == "baremetal" {
+		service := services.GetHardwareService(meta.(ClientSession).SoftLayerSession())
+		resultNew, err := service.Id(macId).Mask(masked).GetObject()
 
-			resultNew, err := service.Id(macId).Mask(masked).GetObject()
-
-			if err != nil {
-				return fmt.Errorf("Error retrieving firewall information: %s", err)
-			}
-
-			log.Print(*resultNew.FirewallServiceComponent.NetworkComponent.Id)
-
-			d.SetId(fmt.Sprintf("%d", (*resultNew.FirewallServiceComponent.NetworkComponent.Id)))
-
-			return nil
+		if err != nil {
+			return fmt.Errorf("Error retrieving firewall information: %s", err)
 		}
+
+		idd2 := *resultNew.FirewallServiceComponent.Id
+		d.SetId(fmt.Sprintf("%d", idd2))
+		data2, err := fservice.Id(idd2).Mask("billingItem.id").GetObject()
+
+		d.Set("billing_item_id", *data2.BillingItem.Id)
+
 	}
 	return nil
 }
 
+//detach hardware firewall from particular machine
 func resourceIBMFirewallSharedDelete(d *schema.ResourceData, meta interface{}) error {
+	sess := meta.(ClientSession).SoftLayerSession()
+	idd2 := (d.Get("billing_item_id")).(int)
+
+	success, err := services.GetBillingItemService(sess).Id(idd2).CancelService()
+	log.Print(success)
+	if err != nil {
+		return err
+	}
+
+	if !success {
+		return fmt.Errorf("SoftLayer reported an unsuccessful cancellation")
+	}
 	return nil
 }
