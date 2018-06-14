@@ -155,7 +155,12 @@ func resourceIBMFirewallSharedRead(d *schema.ResourceData, meta interface{}) err
 		if err != nil {
 			return fmt.Errorf("Error retrieving firewall information: %s", err)
 		}
+
+		if result.FirewallServiceComponent == nil {
+			return fmt.Errorf("Error retrieving firewall information.This resource has already been canceled.")
+		}
 		idd := *result.FirewallServiceComponent.Id
+
 		d.SetId(fmt.Sprintf("%d", idd))
 		data, err := fservice.Id(idd).Mask("billingItem.id").GetObject()
 
@@ -168,8 +173,11 @@ func resourceIBMFirewallSharedRead(d *schema.ResourceData, meta interface{}) err
 		if err != nil {
 			return fmt.Errorf("Error retrieving firewall information: %s", err)
 		}
-
+		if resultNew.FirewallServiceComponent == nil {
+			return fmt.Errorf("Error retrieving firewall information.This resource has already been canceled.")
+		}
 		idd2 := *resultNew.FirewallServiceComponent.Id
+
 		d.SetId(fmt.Sprintf("%d", idd2))
 		data2, err := fservice.Id(idd2).Mask("billingItem.id").GetObject()
 
