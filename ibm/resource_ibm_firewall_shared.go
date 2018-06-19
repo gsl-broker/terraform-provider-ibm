@@ -99,10 +99,11 @@ func resourceIBMFirewallSharedCreate(d *schema.ResourceData, meta interface{}) e
 			},
 		}
 		receipt, err := services.GetProductOrderService(sess.SetRetries(0)).PlaceOrder(&productOrderContainer, sl.Bool(false))
-		log.Print(*receipt.OrderId)
+		log.Print(receipt)
 		if err != nil {
 			return fmt.Errorf("Error during creation of hardware firewall: %s", err)
 		}
+
 	}
 	if guestType == "baremetal" {
 		productOrderContainer := datatypes.Container_Product_Order_Network_Protection_Firewall{
@@ -121,10 +122,11 @@ func resourceIBMFirewallSharedCreate(d *schema.ResourceData, meta interface{}) e
 			},
 		}
 		receipt, err := services.GetProductOrderService(sess.SetRetries(0)).PlaceOrder(&productOrderContainer, sl.Bool(false))
-		log.Print(*receipt.OrderId)
+		log.Print(receipt)
 		if err != nil {
 			return fmt.Errorf("Error during creation of hardware firewall: %s", err)
 		}
+
 	}
 	log.Println("[INFO] Creating hardware firewall shared")
 
