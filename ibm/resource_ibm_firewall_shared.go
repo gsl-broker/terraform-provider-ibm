@@ -3,6 +3,7 @@ package ibm
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
@@ -21,8 +22,8 @@ func resourceIBMFirewallShared() *schema.Resource {
 		Create: resourceIBMFirewallSharedCreate,
 		Read:   resourceIBMFirewallSharedRead,
 		// Update:   resourceIBMFirewallSharedUpdate,
-		Delete: resourceIBMFirewallSharedDelete,
-		// Exists:   resourceIBMFirewallSharedExists,
+		Delete:   resourceIBMFirewallSharedDelete,
+		Exists:   resourceIBMFirewallSharedExists,
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
@@ -206,4 +207,19 @@ func resourceIBMFirewallSharedDelete(d *schema.ResourceData, meta interface{}) e
 		return fmt.Errorf("SoftLayer reported an unsuccessful cancellation")
 	}
 	return nil
+}
+
+//exists method
+func resourceIBMFirewallSharedExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+	sess := meta.(ClientSession).SoftLayerSession()
+	fservice := services.GetNetworkComponentFirewallService(sess)
+	id, err := strconv.Atoi(d.Id())
+	response, err := fservice.Id(id).GetObject()
+
+	if err != nil {
+		log.Printf("error fetching the firewall resource: %s", err)
+		return false, err
+	}
+	log.Print(response)
+	return true, nil
 }
