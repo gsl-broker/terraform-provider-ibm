@@ -3,6 +3,7 @@ package ibm
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
@@ -21,8 +22,8 @@ func resourceIBMFirewallShared() *schema.Resource {
 		Create: resourceIBMFirewallSharedCreate,
 		Read:   resourceIBMFirewallSharedRead,
 		// Update:   resourceIBMFirewallSharedUpdate,
-		Delete: resourceIBMFirewallSharedDelete,
-		// Exists:   resourceIBMFirewallSharedExists,
+		Delete:   resourceIBMFirewallSharedDelete,
+		Exists:   resourceIBMFirewallSharedExists,
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
@@ -99,10 +100,12 @@ func resourceIBMFirewallSharedCreate(d *schema.ResourceData, meta interface{}) e
 			},
 		}
 		receipt, err := services.GetProductOrderService(sess.SetRetries(0)).PlaceOrder(&productOrderContainer, sl.Bool(false))
-		log.Print(*receipt.OrderId)
+		log.Print("receipt for order placed")
+		log.Print(receipt)
 		if err != nil {
 			return fmt.Errorf("Error during creation of hardware firewall: %s", err)
 		}
+
 	}
 	if guestType == "baremetal" {
 		productOrderContainer := datatypes.Container_Product_Order_Network_Protection_Firewall{
@@ -121,10 +124,12 @@ func resourceIBMFirewallSharedCreate(d *schema.ResourceData, meta interface{}) e
 			},
 		}
 		receipt, err := services.GetProductOrderService(sess.SetRetries(0)).PlaceOrder(&productOrderContainer, sl.Bool(false))
-		log.Print(*receipt.OrderId)
+		log.Print("receipt for order placed")
+		log.Print(receipt)
 		if err != nil {
 			return fmt.Errorf("Error during creation of hardware firewall: %s", err)
 		}
+
 	}
 	log.Println("[INFO] Creating hardware firewall shared")
 
@@ -202,4 +207,19 @@ func resourceIBMFirewallSharedDelete(d *schema.ResourceData, meta interface{}) e
 		return fmt.Errorf("SoftLayer reported an unsuccessful cancellation")
 	}
 	return nil
+}
+
+//exists method
+func resourceIBMFirewallSharedExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+	sess := meta.(ClientSession).SoftLayerSession()
+	fservice := services.GetNetworkComponentFirewallService(sess)
+	id, err := strconv.Atoi(d.Id())
+	response, err := fservice.Id(id).GetObject()
+
+	if err != nil {
+		log.Printf("error fetching the firewall resource: %s", err)
+		return false, err
+	}
+	log.Print(response)
+	return true, nil
 }
