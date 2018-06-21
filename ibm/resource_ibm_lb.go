@@ -40,7 +40,6 @@ func resourceIBMLb() *schema.Resource {
 			"connections": {
 				Type:     schema.TypeInt,
 				Required: true,
-				ForceNew: true,
 			},
 			"datacenter": {
 				Type:     schema.TypeString,
@@ -93,6 +92,7 @@ func resourceIBMLbCreate(d *schema.ResourceData, meta interface{}) error {
 	connections := d.Get("connections").(int)
 	haEnabled := d.Get("ha_enabled").(bool)
 	dedicated := d.Get("dedicated").(bool)
+	//certID := d.Get("security_certificate_id").(int)
 
 	var categoryCode string
 
@@ -180,7 +180,6 @@ func resourceIBMLbCreate(d *schema.ResourceData, meta interface{}) error {
 			Quantity:  sl.Int(1),
 		},
 	}
-
 	log.Println("[INFO] Creating load balancer")
 
 	receipt, err := services.GetProductOrderService(sess.SetRetries(0)).
@@ -200,7 +199,6 @@ func resourceIBMLbCreate(d *schema.ResourceData, meta interface{}) error {
 	d.Set("ip_address", loadBalancer.IpAddress.IpAddress)
 	d.Set("subnet_id", loadBalancer.IpAddress.SubnetId)
 	d.Set("ha_enabled", loadBalancer.HighAvailabilityFlag)
-
 	log.Printf("[INFO] Load Balancer ID: %s", d.Id())
 
 	return resourceIBMLbUpdate(d, meta)
@@ -213,12 +211,38 @@ func resourceIBMLbUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	certID := d.Get("security_certificate_id").(int)
 
-	err := setLocalLBSecurityCert(sess, vipID, certID)
-
-	if err != nil {
-		return fmt.Errorf("Update load balancer failed: %s", err)
+	isChanged := false
+	if d.HasChange("security_certificate_id") {
+		isChanged = true
+		log.Println("this is line 218")
+		log.Println(isChanged)
 	}
+	log.Println("this is line 221")
+	log.Println(isChanged)
 
+	if isChanged {
+		err := setLocalLBSecurityCert(sess, vipID, certID)
+		if err != nil {
+			return fmt.Errorf("Update load balancer failed: %s", err)
+		}
+	}
+	isChanged = false
+	log.Println("this is line 231")
+	log.Println(d.IsNewResource())
+	log.Println(isChanged)
+	if d.IsNewResource() != true {
+		if d.HasChange("connections") {
+			isChanged = true
+			log.Println("this is line 235")
+			log.Println(isChanged)
+		}
+	}
+	if isChanged {
+		err := upgradeConnectionsLimit(sess, vipID)
+		if err != nil {
+			return fmt.Errorf("Update load balancer failed: %s", err)
+		}
+	}
 	return resourceIBMLbRead(d, meta)
 }
 
@@ -397,5 +421,16 @@ func setLocalLBSecurityCert(sess *session.Session, vipID int, certID int) error 
 		return fmt.Errorf("Unable to remove ssl security certificate from load balancer")
 	}
 
+	return err
+}
+func upgradeConnectionsLimit(sess *session.Session, vipID int) error {
+	_, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).Id(vipID).UpgradeConnectionLimit()
+	if err != nil {
+		return fmt.Errorf("Couldn't update Local Load Balancer: %s", err)
+	}
+
+	if err != nil {
+		return fmt.Errorf("Unable to upgrade connections limit for load balancer")
+	}
 	return err
 }
