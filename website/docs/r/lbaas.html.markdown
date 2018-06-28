@@ -14,11 +14,6 @@ Provides a resource for a load balancer as a service. This allows a load balance
 
 ```hcl
 
-resource "ibm_compute_vm_instance" "vm_instances" {
-  count = "2"
-  ....
-}
-
 resource "ibm_lbaas" "lbaas" {
   name        = "terraformLB"
   description = "delete this"
@@ -51,6 +46,8 @@ The following arguments are supported:
 
 * `name` - (Required, string) The load balancer's name.
 * `description` - (Optional, string) A description of the load balancer.
+* `type` - (Optional, string) Specify whether this load balancer is a public or internal facing load balancer. Accepted values are `PUBLIC` or `PRIVATE`. 
+The default is 'PUBLIC'.
 * `subnets` - (Required, array) The subnet where the load balancer will be provisioned. Only one subnet is supported.
 * `protocols` - (Optional, array) A nested block describing the protocols assigned to load balancer. Nested `protocols` blocks have the following structure:
   * `frontend_protocol` - (Required, string) The frontend protocol. Accepted values are 'TCP', 'HTTP', and 'HTTPS'.
@@ -69,7 +66,14 @@ The following attributes are exported:
 
 * `id` - The unique identifier of the created policy.
 * `datacenter` - The datacenter where the load balancer is provisioned. This is based on the subnet chosen while creating load-balancer.
-* `type` - Specifies whether a load balancer is `PUBLIC` or `PRIVATE`.
 * `status` - Specifies the operation status of the load balancer as `ONLINE` or `OFFLINE`.
 * `vip` - The virtual IP address of the load balancer.
 * `protocol_id` - The UUID of a load balancer protocol.
+* `health_monitors` - A nested block describing the health_monitors assigned to the load balancer. Nested `health_monitors` blocks have the following structure:
+  * `protocol` - Backends protocol
+  * `port` - Backends port
+  * `interval` - Interval in seconds to perform 
+  * `max_retries` - Maximum retries
+  * `timeout` - Health check methods timeout in 
+  * `url_path` - If monitor is "HTTP", this specifies URL path
+  * `monitor_id` - Health Monitor UUID

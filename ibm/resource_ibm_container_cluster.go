@@ -23,6 +23,13 @@ const (
 	clusterProvisioning = "provisioning"
 	workerProvisioning  = "provisioning"
 	subnetProvisioning  = "provisioning"
+
+	hardwareShared    = "shared"
+	hardwareDedicated = "dedicated"
+	isolationPublic   = "public"
+	isolationPrivate  = "private"
+
+	defaultWorkerPool = "default"
 )
 
 const PUBLIC_SUBNET_TYPE = "public"
@@ -53,6 +60,7 @@ func resourceIBMContainerCluster() *schema.Resource {
 				Type:          schema.TypeList,
 				Optional:      true,
 				ConflictsWith: []string{"worker_num"},
+				Deprecated:    "Use worker_num instead.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
@@ -113,9 +121,19 @@ func resourceIBMContainerCluster() *schema.Resource {
 				Optional: true,
 			},
 			"isolation": {
-				Type:     schema.TypeString,
-				ForceNew: true,
-				Optional: true,
+				Type:          schema.TypeString,
+				ForceNew:      true,
+				Optional:      true,
+				ConflictsWith: []string{"hardware"},
+				Deprecated:    "Use hardware instead",
+			},
+			"hardware": {
+				Type:          schema.TypeString,
+				ForceNew:      true,
+				Optional:      true,
+				ConflictsWith: []string{"isolation"},
+				Default:       hardwareShared,
+				ValidateFunc:  validateAllowedStringValue([]string{hardwareShared, hardwareDedicated}),
 			},
 
 			"billing": {
@@ -148,6 +166,12 @@ func resourceIBMContainerCluster() *schema.Resource {
 				Sensitive: true,
 			},
 			"no_subnet": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				ForceNew: true,
+				Default:  false,
+			},
+			"is_trusted": {
 				Type:     schema.TypeBool,
 				Optional: true,
 				ForceNew: true,
@@ -232,7 +256,7 @@ func resourceIBMContainerClusterCreate(d *schema.ResourceData, meta interface{})
 	privateVlanID := d.Get("private_vlan_id").(string)
 	webhooks := d.Get("webhook").([]interface{})
 	noSubnet := d.Get("no_subnet").(bool)
-	isolation := d.Get("isolation").(string)
+	enableTrusted := d.Get("is_trusted").(bool)
 	diskEncryption := d.Get("disk_encryption").(bool)
 	var workers []interface{}
 	var workerNum int
@@ -250,6 +274,22 @@ func resourceIBMContainerClusterCreate(d *schema.ResourceData, meta interface{})
 			"Please set either the wokers with valid array or worker_num with value grater than 0")
 	}
 
+	//Read the hardware and convert it to appropriate
+	var isolation string
+
+	hardware := d.Get("hardware").(string)
+	switch strings.ToLower(hardware) {
+	case "": // do nothing
+	case hardwareDedicated:
+		isolation = isolationPrivate
+	case hardwareShared:
+		isolation = isolationPublic
+	}
+
+	if v, ok := d.GetOk("isolation"); ok {
+		isolation = v.(string)
+	}
+
 	params := v1.ClusterCreateRequest{
 		Name:           name,
 		Datacenter:     datacenter,
@@ -261,6 +301,7 @@ func resourceIBMContainerClusterCreate(d *schema.ResourceData, meta interface{})
 		NoSubnet:       noSubnet,
 		Isolation:      isolation,
 		DiskEncryption: diskEncryption,
+		EnableTrusted:  enableTrusted,
 	}
 
 	if v, ok := d.GetOk("kube_version"); ok {
@@ -383,6 +424,21 @@ func resourceIBMContainerClusterRead(d *schema.ResourceData, meta interface{}) e
 		workers[i] = worker.ID
 	}
 
+	workersByPool, err := wrkAPI.ListByWorkerPool(clusterID, defaultWorkerPool, false)
+	if err != nil {
+		return fmt.Errorf("Error retrieving workers for cluster: %s", err)
+	}
+
+	hardware := workersByPool[0].Isolation
+	switch strings.ToLower(hardware) {
+	case "":
+		hardware = hardwareShared
+	case isolationPrivate:
+		hardware = hardwareDedicated
+	case isolationPublic:
+		hardware = hardwareShared
+	}
+
 	d.Set("name", cls.Name)
 	d.Set("server_url", cls.ServerURL)
 	d.Set("ingress_hostname", cls.IngressHostname)
@@ -391,6 +447,9 @@ func resourceIBMContainerClusterRead(d *schema.ResourceData, meta interface{}) e
 	d.Set("subnet_id", d.Get("subnet_id").(*schema.Set))
 	d.Set("workers_info", workers)
 	d.Set("kube_version", strings.Split(cls.MasterKubeVersion, "_")[0])
+	d.Set("is_trusted", cls.IsTrusted)
+	d.Set("hardware", hardware)
+
 	return nil
 }
 

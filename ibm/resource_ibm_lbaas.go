@@ -69,9 +69,12 @@ func resourceIBMLbaas() *schema.Resource {
 				Description: "Description of a load balancer.",
 			},
 			"type": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "Specifies if a load balancer is public or private",
+				Type:         schema.TypeString,
+				Optional:     true,
+				Default:      "PUBLIC",
+				ForceNew:     true,
+				Description:  "Specifies if a load balancer is public or private",
+				ValidateFunc: validateAllowedStringValue([]string{"PUBLIC", "PRIVATE"}),
 			},
 			"datacenter": {
 				Type:     schema.TypeString,
@@ -164,6 +167,42 @@ func resourceIBMLbaas() *schema.Resource {
 				Optional: true,
 				Default:  90,
 			},
+			"health_monitors": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"protocol": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"port": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"interval": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"max_retries": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"timeout": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"url_path": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"monitor_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
+			},
 			"server_instances": {
 				Type:        schema.TypeSet,
 				Description: "The Server instances for this load balancer",
@@ -255,7 +294,7 @@ func resourceIBMLbaasRead(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 	service := services.GetNetworkLBaaSLoadBalancerService(sess)
 
-	result, err := service.Mask("datacenter,members,listeners.defaultPool,listeners.defaultPool.sessionAffinity").GetLoadBalancer(sl.String(d.Id()))
+	result, err := service.Mask("datacenter,members,listeners.defaultPool,listeners.defaultPool.sessionAffinity,listeners.defaultPool.healthMonitor,healthMonitors").GetLoadBalancer(sl.String(d.Id()))
 	if err != nil {
 		return fmt.Errorf("Error retrieving load balancer: %s", err)
 	}
@@ -269,13 +308,13 @@ func resourceIBMLbaasRead(d *schema.ResourceData, meta interface{}) error {
 	//TODO THis is public subnet and we need to set the private subnet
 	//subnets := [1]int{*result.IpAddress.SubnetId}
 	//d.Set("subnets", subnets)
-
 	d.Set("name", result.Name)
 	d.Set("description", result.Description)
 	d.Set("datacenter", result.Datacenter.Name)
 	d.Set("type", lbType)
 	d.Set("status", result.OperatingStatus)
 	d.Set("vip", result.Address)
+	d.Set("health_monitors", flattenHealthMonitors(result.Listeners))
 	d.Set("protocols", flattenProtocols(result.Listeners))
 	return nil
 }
@@ -380,6 +419,8 @@ func buildLbaasLBProductOrderContainer(d *schema.ResourceData, sess *session.Ses
 	// 1. Get a package
 	name := d.Get("name").(string)
 	subnets := d.Get("subnets").([]interface{})
+	lbType := d.Get("type").(string)
+
 	subnetsParam := []datatypes.Network_Subnet{}
 	for _, subnet := range subnets {
 		subnetItem := datatypes.Network_Subnet{
@@ -424,6 +465,10 @@ func buildLbaasLBProductOrderContainer(d *schema.ResourceData, sess *session.Ses
 	}
 	if d, ok := d.GetOk("description"); ok {
 		productOrderContainer.Description = sl.String(d.(string))
+	}
+
+	if lbType == "PRIVATE" {
+		productOrderContainer.IsPublic = sl.Bool(false)
 	}
 
 	return &productOrderContainer, nil

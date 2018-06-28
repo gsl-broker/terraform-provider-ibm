@@ -6,10 +6,11 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/IBM-Cloud/bluemix-go/models"
+
 	"github.com/hashicorp/terraform/flatmap"
 
 	"github.com/IBM-Cloud/bluemix-go/api/container/containerv1"
-	"github.com/IBM-Cloud/bluemix-go/api/iampap/iampapv1"
 	"github.com/IBM-Cloud/bluemix-go/api/mccp/mccpv2"
 	"github.com/apache/incubator-openwhisk-client-go/whisk"
 	"github.com/hashicorp/terraform/helper/schema"
@@ -167,44 +168,6 @@ func flattenServiceInstanceCredentials(keys []mccpv2.ServiceKeyFields) []interfa
 		out[i] = m
 	}
 	return out
-}
-
-func flattenIAMPolicyResource(list []iampapv1.Resources, iamClient iampapv1.IAMPAPAPI) ([]map[string]interface{}, error) {
-	result := make([]map[string]interface{}, 0, len(list))
-	for _, i := range list {
-		name := i.ServiceName
-		if name == "" {
-			name = allIAMEnabledServices
-		}
-		serviceName, err := iamClient.IAMService().GetServiceDispalyName(name)
-		if err != nil {
-			return result, fmt.Errorf("Error retrieving service : %s", err)
-		}
-		l := map[string]interface{}{
-			"service_name":      serviceName,
-			"region":            i.Region,
-			"resource_type":     i.ResourceType,
-			"resource":          i.Resource,
-			"space_guid":        i.SpaceId,
-			"organization_guid": i.OrganizationId,
-		}
-		if i.ServiceInstance != "" {
-			l["service_instance"] = []string{i.ServiceInstance}
-		}
-		result = append(result, l)
-	}
-	return result, nil
-}
-
-func flattenIAMPolicyRoles(list []iampapv1.Roles) []map[string]interface{} {
-	result := make([]map[string]interface{}, 0, len(list))
-	for _, v := range list {
-		l := map[string]interface{}{
-			"name": roleIDToName[v.ID],
-		}
-		result = append(result, l)
-	}
-	return result
 }
 
 func expandProtocols(configured []interface{}) ([]datatypes.Network_LBaaS_LoadBalancerProtocolConfiguration, error) {
@@ -665,12 +628,12 @@ func flattenGatewayMembers(d *schema.ResourceData, list []datatypes.Network_Gate
 	return members
 }
 
-func flattenDisks(result datatypes.Virtual_Guest, d *schema.ResourceData) []int {
+func flattenDisks(result datatypes.Virtual_Guest) []int {
 	var out = make([]int, 0)
 
 	for _, v := range result.BlockDevices {
 		// skip 1,7 which is reserved for the swap disk and metadata
-		if _, ok := d.GetOk("flavor_key_name"); ok {
+		if result.BillingItem.OrderItem.Preset != nil {
 			if *v.Device != "1" && *v.Device != "7" && *v.Device != "0" {
 				out = append(out, *v.DiskImage.Capacity)
 			}
@@ -684,7 +647,85 @@ func flattenDisks(result datatypes.Virtual_Guest, d *schema.ResourceData) []int 
 	return out
 }
 
+func flattenDisksForWindows(result datatypes.Virtual_Guest) []int {
+	var out = make([]int, 0)
+
+	for _, v := range result.BlockDevices {
+		// skip 1,7 which is reserved for the swap disk and metadata
+		if result.BillingItem.OrderItem.Preset != nil {
+			if *v.Device != "1" && *v.Device != "7" && *v.Device != "0" && *v.Device != "3" {
+				out = append(out, *v.DiskImage.Capacity)
+			}
+		} else {
+			if *v.Device != "1" && *v.Device != "7" && *v.Device != "3" {
+				out = append(out, *v.DiskImage.Capacity)
+			}
+		}
+	}
+
+	return out
+}
+
 func filterResourceKeyParameters(params map[string]interface{}) map[string]interface{} {
 	delete(params, "role_crn")
 	return params
+}
+
+func idParts(id string) ([]string, error) {
+	if strings.Contains(id, "/") {
+		parts := strings.Split(id, "/")
+		return parts, nil
+	}
+	return []string{}, fmt.Errorf("The given id %s does not contain / please check documentation on how to provider id during import command", id)
+}
+
+func flattenPolicyResource(list []models.PolicyResource) []map[string]interface{} {
+	result := make([]map[string]interface{}, 0, len(list))
+	for _, i := range list {
+		l := map[string]interface{}{
+			"service":              i.ServiceName,
+			"resource_instance_id": i.ServiceInstance,
+			"region":               i.Region,
+			"resource_type":        i.ResourceType,
+			"resource":             i.Resource,
+			"resource_group_id":    i.ResourceGroupID,
+		}
+		result = append(result, l)
+	}
+	return result
+}
+
+func flattenHealthMonitors(list []datatypes.Network_LBaaS_Listener) []map[string]interface{} {
+	result := make([]map[string]interface{}, 0, len(list))
+	ports := make([]int, 0, 0)
+	for _, i := range list {
+		l := map[string]interface{}{
+			"protocol":    *i.DefaultPool.Protocol,
+			"port":        *i.DefaultPool.ProtocolPort,
+			"interval":    *i.DefaultPool.HealthMonitor.Interval,
+			"max_retries": *i.DefaultPool.HealthMonitor.MaxRetries,
+			"timeout":     *i.DefaultPool.HealthMonitor.Timeout,
+			"monitor_id":  *i.DefaultPool.HealthMonitor.Uuid,
+		}
+
+		if i.DefaultPool.HealthMonitor.UrlPath != nil {
+			l["url_path"] = *i.DefaultPool.HealthMonitor.UrlPath
+		}
+
+		if !contains(ports, *i.DefaultPool.ProtocolPort) {
+			result = append(result, l)
+		}
+
+		ports = append(ports, *i.DefaultPool.ProtocolPort)
+	}
+	return result
+}
+
+func contains(s []int, e int) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
