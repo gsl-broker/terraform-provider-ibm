@@ -2,6 +2,11 @@ package ibm
 
 import (
 	"fmt"
+	"log"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
@@ -11,10 +16,6 @@ import (
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
-	"log"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func resourceIBMIPSecVPN() *schema.Resource {
@@ -185,7 +186,7 @@ func resourceIBMIPSecVpnCreate(d *schema.ResourceData, meta interface{}) error {
 	for _, priceidd := range priceidds {
 		listofpriceids = append(listofpriceids, *priceidd.Id)
 	}
-	actualpriceid, err := product.Returnpriceidaccordingtopackageid("IPSEC - Standard", listofpriceids, sess, 0)
+	actualpriceid, err := product.GetPriceIDByPackageIdandLocationGroups(sess, listofpriceids, 0, "IPSEC - Standard")
 	priceItems := []datatypes.Product_Item_Price{}
 	priceItem := datatypes.Product_Item_Price{
 		Id: &actualpriceid,

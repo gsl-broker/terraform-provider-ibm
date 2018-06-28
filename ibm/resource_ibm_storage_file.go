@@ -860,6 +860,7 @@ func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}, storagety
 		return nil, fmt.Errorf("The storage ID %s must be numeric", d.Id())
 	}
 	sess := meta.(ClientSession).SoftLayerSession()
+	storageType := d.Get("type").(string)
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"retry", "provisioning"},
 		Target:  []string{"available"},
@@ -894,9 +895,10 @@ func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}, storagety
 					return false, "retry", nil
 				}
 
-			if !strings.Contains(resultStr, "PROVISION_COMPLETED") &&
-				!strings.Contains(resultStr, "Volume Provisioning has completed") {
-				return result, "provisioning", nil
+				if !strings.Contains(resultStr, "PROVISION_COMPLETED") &&
+					!strings.Contains(resultStr, "Volume Provisioning has completed") {
+					return result, "provisioning", nil
+				}
 			}
 
 			return result, "available", nil
