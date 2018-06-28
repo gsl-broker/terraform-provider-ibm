@@ -42,7 +42,7 @@ func TestAccIBMComputeAutoScalePolicy_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"ibm_compute_autoscale_policy.sample-http-cluster-policy", "scale_amount", "1"),
 					resource.TestCheckResourceAttr(
-						"ibm_compute_autoscale_policy.sample-http-cluster-policy", "cooldown", "30"),
+						"ibm_compute_autoscale_policy.sample-http-cluster-policy", "cooldown", "0"),
 					resource.TestCheckResourceAttr(
 						"ibm_compute_autoscale_policy.sample-http-cluster-policy", "triggers.#", "3"),
 					testAccCheckIBMComputeAutoScalePolicyContainsRepeatingTriggers(&scalepolicy, 2, "0 1 ? * MON,WED *"),
@@ -242,7 +242,7 @@ func testAccCheckIBMComputeAutoScalePolicyConfig_basic(groupname, hostname, poli
 resource "ibm_compute_autoscale_group" "sample-http-cluster-with-policy" {
     name = "%s"
     regional_group = "na-usa-central-1"
-    cooldown = 30
+    cooldown = 0
     minimum_member_count = 1
     maximum_member_count = 10
     termination_policy = "CLOSEST_TO_NEXT_CHARGE"
