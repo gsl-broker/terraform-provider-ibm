@@ -73,7 +73,7 @@ func resourceIBMCDN() *schema.Resource {
 				Optional: true,
 				Default:  true,
 			},
-			"fileExtension": &schema.Schema{
+			"fileextension": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "",
@@ -103,7 +103,7 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 	bucketname := d.Get("bucketname").(string)
 	path := d.Get("path").(string)
 	header := d.Get("header").(string)
-	fileExtension := d.Get("fileExtension").(string)
+	fileextension := d.Get("fileextension").(string)
 	respectheaders := d.Get("respectheaders").(bool)
 	cname := d.Get("cname").(string)
 	if cname != "0" {
@@ -124,7 +124,7 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 			Cname:          sl.String(cname),
 			Protocol:       sl.String(protocol),
 			HttpPort:       sl.Int(httpport),
-			FileExtension:  sl.String(fileExtension),
+			FileExtension:  sl.String(fileextension),
 			OriginType:     sl.String(origintype),
 			BucketName:     sl.String(bucketname),
 			Header:         sl.String(header),
@@ -147,7 +147,7 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 			Cname:          sl.String(cname),
 			Protocol:       sl.String(protocol),
 			HttpsPort:      sl.Int(httpsport),
-			FileExtension:  sl.String(fileExtension),
+			FileExtension:  sl.String(fileextension),
 			OriginType:     sl.String(origintype),
 			BucketName:     sl.String(bucketname),
 			Header:         sl.String(header),
@@ -171,7 +171,7 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 			Protocol:       sl.String(protocol),
 			HttpPort:       sl.Int(httpport),
 			HttpsPort:      sl.Int(httpsport),
-			FileExtension:  sl.String(fileExtension),
+			FileExtension:  sl.String(fileextension),
 			OriginType:     sl.String(origintype),
 			BucketName:     sl.String(bucketname),
 			Header:         sl.String(header),
