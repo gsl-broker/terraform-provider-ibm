@@ -41,7 +41,7 @@ func resourceIBMObjectStorageAccount() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"accountType": &schema.Schema{
+			"account_type": &schema.Schema{
 				Type:     schema.TypeString,
 				Default:  "SWIFT",
 				Optional: true,
@@ -90,7 +90,7 @@ func resourceIBMObjectStorageAccountCreate(d *schema.ResourceData, meta interfac
 	productOrderService := services.GetProductOrderService(sess.SetRetries(0))
 
 	itemPriceID := sl.Int(*ObjectStorages[0].Prices[0].Id)
-	accountType := d.Get("accountType").(string)
+	accountType := d.Get("account_type").(string)
 	keyName := swift
 	switch accountType {
 	case "SWIFT":

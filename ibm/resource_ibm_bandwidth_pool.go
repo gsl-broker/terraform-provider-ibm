@@ -26,7 +26,7 @@ func resourceIBMBandwidthPool() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"locationGroupId": &schema.Schema{
+			"locationgroupid": &schema.Schema{
 				Type:     schema.TypeInt,
 				Required: true,
 			},
@@ -40,7 +40,7 @@ func resourceIBMBandwidthPoolCreate(d *schema.ResourceData, meta interface{}) er
 	log.Println("ordering bandwidth Pool service...")
 	///get the value of all the parameters
 	name := d.Get("name").(string)
-	locationGroupID := d.Get("locationGroupId").(int)
+	locationGroupID := d.Get("locationgroupd").(int)
 	///creat an object of Bandwidth Pool service
 	service := services.GetNetworkBandwidthVersion1AllotmentService(sess)
 	account := services.GetAccountService(sess)
