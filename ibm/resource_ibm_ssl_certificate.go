@@ -597,7 +597,7 @@ func buildSSLProductOrderContainer(d *schema.ResourceData, sess *session1.Sessio
 		PostalCode:   &tech_postalCode,
 		State:        &tech_state,
 	}
-	techAddressFlag := d.Get("technicalContactSameAsOrgAddressFlag").(bool)
+	techAddressFlag := d.Get("technical_contact_same_as_org_address_flag").(bool)
 	var technical_contact_attr datatypes.Container_Product_Order_Attribute_Contact
 	if techAddressFlag {
 		technical_contact_attr = datatypes.Container_Product_Order_Attribute_Contact{
@@ -735,7 +735,7 @@ func buildSSLProductOrderContainer(d *schema.ResourceData, sess *session1.Sessio
 		}
 	}
 
-	administrativeContactSameAsTechnical := d.Get("administrativeContactSameAsTechnicalFlag").(bool)
+	administrativeContactSameAsTechnical := d.Get("administrative_contact_same_as_technical_flag").(bool)
 	billingContactSameAsTechnical := d.Get("billing_contact_same_as_technical_flag").(bool)
 	if administrativeContactSameAsTechnical {
 		administrative_contact_attr = technical_contact_attr
