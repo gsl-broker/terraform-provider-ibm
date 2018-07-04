@@ -36,11 +36,10 @@ func resourceIBMFirewall() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"ha_enabled": {
-				Type:     schema.TypeBool,
-				Optional: true,
+			"firewall_type": {
+				Type:     schema.TypeString,
+				Required: true,
 				ForceNew: true,
-				Default:  false,
 			},
 			"public_vlan_id": {
 				Type:     schema.TypeInt,
@@ -53,20 +52,24 @@ func resourceIBMFirewall() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Set:      schema.HashString,
 			},
+			"location": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"primary_ip": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
 
+ // keyName is in between:[HARDWARE_FIREWALL_DEDICATED, HARDWARE_FIREWALL_HIGH_AVAILABILITY, FORTIGATE_SECURITY_APPLIANCE, FORTIGATE_SECURITY_APPLIANCE_HIGH_AVAILABILITY, FORTIGATE_SECURITY_APPLIANCE, FORTIGATE_SECURITY_APPLIANCE_HIGH_AVAILABILITY]
 func resourceIBMFirewallCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 
-	haEnabled := d.Get("ha_enabled").(bool)
+	keyName := d.Get("firewall_type").(string)
 	publicVlanId := d.Get("public_vlan_id").(int)
-
-	keyName := "HARDWARE_FIREWALL_DEDICATED"
-	if haEnabled {
-		keyName = "HARDWARE_FIREWALL_HIGH_AVAILABILITY"
-	}
 
 	pkg, err := product.GetPackageByType(sess, FwHardwareDedicatedPackageType)
 	if err != nil {
@@ -118,9 +121,8 @@ func resourceIBMFirewallCreate(d *schema.ResourceData, meta interface{}) error {
 
 	id := *vlan.NetworkVlanFirewall.Id
 	d.SetId(fmt.Sprintf("%d", id))
-	d.Set("ha_enabled", *vlan.HighAvailabilityFirewallFlag)
+	d.Set("firewall_type", *vlan.NetworkVlanFirewall.BillingItem.Description)
 	d.Set("public_vlan_id", *vlan.Id)
-
 	log.Printf("[INFO] Firewall ID: %s", d.Id())
 
 	// Set tags
@@ -151,7 +153,8 @@ func resourceIBMFirewallRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.Set("public_vlan_id", *fw.NetworkVlan.Id)
-	d.Set("ha_enabled", *fw.NetworkVlan.HighAvailabilityFirewallFlag)
+	d.Set("location", *fw.Datacenter.Name)
+	d.Set("primary_ip", *fw.PrimaryIpAddress)
 
 	tagRefs := fw.TagReferences
 	tagRefsLen := len(tagRefs)
