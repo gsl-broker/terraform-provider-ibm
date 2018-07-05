@@ -23,7 +23,7 @@ const (
 	vlanMask = "firewallNetworkComponents,networkVlanFirewall.billingItem.orderItem.order.id,dedicatedFirewallFlag" +
 		",firewallGuestNetworkComponents,firewallInterfaces,firewallRules,highAvailabilityFirewallFlag"
 	fwMask        = "id,networkVlan.highAvailabilityFirewallFlag,tagReferences[id,tag[name]]"
-	multivlanmask = "id,name,networkFirewall[id,customerManagedFlag,datacenter.name,billingItem.orderItem.order.id],publicIpAddress.ipAddress,publicVlan[id,primaryRouter.hostname],privateVlan[id,primaryRouter.hostname],privateIpAddress.ipAddress,insideVlans[id],memberCount,status.keyName"
+	multiVlanMask = "id,name,networkFirewall[id,customerManagedFlag,datacenter.name,billingItem[orderItem.order.id,activeChildren[categoryCode, description,id]],managementCredentials,firewallType],publicIpAddress.ipAddress,publicIpv6Address.ipAddress,publicVlan[id,primaryRouter.hostname],privateVlan[id,primaryRouter.hostname],privateIpAddress.ipAddress,insideVlans[id],memberCount,status.keyName"
 )
 
 func resourceIBMFirewall() *schema.Resource {
@@ -36,11 +36,10 @@ func resourceIBMFirewall() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"ha_enabled": {
-				Type:     schema.TypeBool,
-				Optional: true,
+			"firewall_type": {
+				Type:     schema.TypeString,
+				Required: true,
 				ForceNew: true,
-				Default:  false,
 			},
 			"public_vlan_id": {
 				Type:     schema.TypeInt,
@@ -53,20 +52,24 @@ func resourceIBMFirewall() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Set:      schema.HashString,
 			},
+			"location": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"primary_ip": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
 
+// keyName is in between:[HARDWARE_FIREWALL_DEDICATED, HARDWARE_FIREWALL_HIGH_AVAILABILITY, FORTIGATE_SECURITY_APPLIANCE, FORTIGATE_SECURITY_APPLIANCE_HIGH_AVAILABILITY, FORTIGATE_SECURITY_APPLIANCE, FORTIGATE_SECURITY_APPLIANCE_HIGH_AVAILABILITY]
 func resourceIBMFirewallCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 
-	haEnabled := d.Get("ha_enabled").(bool)
+	keyName := d.Get("firewall_type").(string)
 	publicVlanId := d.Get("public_vlan_id").(int)
-
-	keyName := "HARDWARE_FIREWALL_DEDICATED"
-	if haEnabled {
-		keyName = "HARDWARE_FIREWALL_HIGH_AVAILABILITY"
-	}
 
 	pkg, err := product.GetPackageByType(sess, FwHardwareDedicatedPackageType)
 	if err != nil {
@@ -111,16 +114,15 @@ func resourceIBMFirewallCreate(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return fmt.Errorf("Error during creation of dedicated hardware firewall: %s", err)
 	}
-	vlan, _, err := findDedicatedFirewallByOrderID(sess, *receipt.OrderId, d)
+	vlan, _, _, err := findDedicatedFirewallByOrderId(sess, *receipt.OrderId, d)
 	if err != nil {
 		return fmt.Errorf("Error during creation of dedicated hardware firewall: %s", err)
 	}
 
 	id := *vlan.NetworkVlanFirewall.Id
 	d.SetId(fmt.Sprintf("%d", id))
-	d.Set("ha_enabled", *vlan.HighAvailabilityFirewallFlag)
+	d.Set("firewall_type", *vlan.NetworkVlanFirewall.BillingItem.Description)
 	d.Set("public_vlan_id", *vlan.Id)
-
 	log.Printf("[INFO] Firewall ID: %s", d.Id())
 
 	// Set tags
@@ -151,7 +153,8 @@ func resourceIBMFirewallRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.Set("public_vlan_id", *fw.NetworkVlan.Id)
-	d.Set("ha_enabled", *fw.NetworkVlan.HighAvailabilityFirewallFlag)
+	d.Set("location", *fw.Datacenter.Name)
+	d.Set("primary_ip", *fw.PrimaryIpAddress)
 
 	tagRefs := fw.TagReferences
 	tagRefsLen := len(tagRefs)
@@ -235,22 +238,34 @@ func resourceIBMFirewallExists(d *schema.ResourceData, meta interface{}) (bool, 
 	return true, nil
 }
 
-func findDedicatedFirewallByOrderID(sess *session.Session, orderId int, d *schema.ResourceData) (datatypes.Network_Vlan, datatypes.Network_Gateway, error) {
+func findDedicatedFirewallByOrderId(sess *session.Session, orderId int, d *schema.ResourceData) (datatypes.Network_Vlan, datatypes.Network_Gateway, datatypes.Product_Upgrade_Request, error) {
 	filterPath := "networkVlans.networkVlanFirewall.billingItem.orderItem.order.id"
 	multivlanfilterpath := "networkGateways.networkFirewall.billingItem.orderItem.order.id"
 	var vlans []datatypes.Network_Vlan
 	var err error
 	var firewalls []datatypes.Network_Gateway
+	var upgraderequest datatypes.Product_Upgrade_Request
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"pending"},
 		Target:  []string{"complete"},
 		Refresh: func() (interface{}, string, error) {
-			if _, ok := d.GetOk("pod"); ok {
+			fwID, _ := strconv.Atoi(d.Id())
+			log.Print("Log from line 253")
+			log.Print(d.Id())
+			if d.Id() != "" {
+				upgraderequest, err = services.GetNetworkVlanFirewallService(sess).
+					Id(fwID).
+					Mask("status").
+					GetUpgradeRequest()
+				if err != nil {
+					return datatypes.Product_Upgrade_Request{}, "", err
+				}
+			} else if _, ok := d.GetOk("pod"); ok {
 				firewalls, err = services.GetAccountService(sess).
 					Filter(filter.Build(
 						filter.Path(multivlanfilterpath).
 							Eq(strconv.Itoa(orderId)))).
-					Mask(multivlanmask).
+					Mask(multiVlanMask).
 					GetNetworkGateways()
 				if err != nil {
 					return datatypes.Network_Gateway{}, "", err
@@ -266,12 +281,16 @@ func findDedicatedFirewallByOrderID(sess *session.Session, orderId int, d *schem
 					return datatypes.Network_Vlan{}, "", err
 				}
 			}
-
 			if len(vlans) == 1 {
 				return vlans[0], "complete", nil
 			} else if len(firewalls) == 1 {
 				return firewalls[0], "complete", nil
-			} else if len(vlans) == 0 || len(firewalls) == 0 {
+			} else if d.Id() != "" {
+				if *upgraderequest.Status.Name != "Complete" {
+					return nil, "pending", nil
+				}
+				return upgraderequest, "complete", nil
+			} else if len(vlans) == 0 || len(firewalls) == 0 || *upgraderequest.Status.Name != "Complete" {
 				return nil, "pending", nil
 			}
 			return nil, "", fmt.Errorf("Expected one dedicated firewall: %s", err)
@@ -285,24 +304,28 @@ func findDedicatedFirewallByOrderID(sess *session.Session, orderId int, d *schem
 	pendingResult, err := stateConf.WaitForState()
 
 	if err != nil {
-		return datatypes.Network_Vlan{}, datatypes.Network_Gateway{}, err
+		return datatypes.Network_Vlan{}, datatypes.Network_Gateway{}, datatypes.Product_Upgrade_Request{}, err
 	}
-
-	if _, ok := d.GetOk("pod"); ok {
-		if result, ok := pendingResult.(datatypes.Network_Gateway); ok {
-			return datatypes.Network_Vlan{}, result, nil
+	if d.Id() != "" {
+		if result, ok := pendingResult.(datatypes.Product_Upgrade_Request); ok {
+			return datatypes.Network_Vlan{}, datatypes.Network_Gateway{}, result, nil
 		}
-		return datatypes.Network_Vlan{}, datatypes.Network_Gateway{},
+		return datatypes.Network_Vlan{}, datatypes.Network_Gateway{}, datatypes.Product_Upgrade_Request{},
+			fmt.Errorf("Something went wrong while upgrading '%d'", orderId)
+	} else if _, ok := d.GetOk("pod"); ok {
+		if result, ok := pendingResult.(datatypes.Network_Gateway); ok {
+			return datatypes.Network_Vlan{}, result, datatypes.Product_Upgrade_Request{}, nil
+		}
+		return datatypes.Network_Vlan{}, datatypes.Network_Gateway{}, datatypes.Product_Upgrade_Request{},
 			fmt.Errorf("Cannot find Dedicated Firewall with order id '%d'", orderId)
-
 	}
 	var result, ok = pendingResult.(datatypes.Network_Vlan)
 
 	if ok {
-		return result, datatypes.Network_Gateway{}, nil
+		return result, datatypes.Network_Gateway{}, datatypes.Product_Upgrade_Request{}, nil
 	}
 
-	return datatypes.Network_Vlan{}, datatypes.Network_Gateway{},
+	return datatypes.Network_Vlan{}, datatypes.Network_Gateway{}, datatypes.Product_Upgrade_Request{},
 		fmt.Errorf("Cannot find Dedicated Firewall with order id '%d'", orderId)
 }
 
