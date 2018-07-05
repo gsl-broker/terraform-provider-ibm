@@ -41,13 +41,9 @@ func resourceIBMSubnet() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
 
-			"private": {
-				Type:     schema.TypeBool,
+			"network_type": {
+				Type:     schema.TypeString,
 				Optional: true,
 				Default:  false,
 				ForceNew: true,
@@ -169,9 +165,9 @@ func resourceIBMSubnetRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	if *subnet.AddressSpace == "PRIVATE" {
-		d.Set("private", true)
+		d.Set("network_type", "private")
 	} else if *subnet.AddressSpace == "PUBLIC" {
-		d.Set("private", false)
+		d.Set("network_type", "public")
 	}
 
 	if subnet.SubnetType == nil {
@@ -311,9 +307,9 @@ func buildSubnetProductOrderContainer(d *schema.ResourceData, sess *session.Sess
 	// 1. Get a package
 	typeStr := d.Get("type").(string)
 	vlanID := d.Get("vlan_id").(int)
-	private := d.Get("private").(bool)
+	network_type := d.Get("network_type").(string)
 	network := "PUBLIC"
-	if private {
+	if network_type == "private" {
 		network = "PRIVATE"
 	}
 

@@ -14,11 +14,6 @@ Provides a resource for a load balancer as a service. This allows a load balance
 
 ```hcl
 
-resource "ibm_compute_vm_instance" "vm_instances" {
-  count = "2"
-  ....
-}
-
 resource "ibm_lbaas" "lbaas" {
   name        = "terraformLB"
   description = "delete this"
@@ -40,15 +35,6 @@ resource "ibm_lbaas" "lbaas" {
       load_balancing_method = "round_robin"
     },
   ]
-
-  server_instances = [
-    {
-      "private_ip_address" = "${ibm_compute_vm_instance.vm_instances.0.ipv4_address_private}"
-    },
-    {
-      "private_ip_address" = "${ibm_compute_vm_instance.vm_instances.1.ipv4_address_private}"
-    },
-  ]
 }
 
 
@@ -60,6 +46,8 @@ The following arguments are supported:
 
 * `name` - (Required, string) The load balancer's name.
 * `description` - (Optional, string) A description of the load balancer.
+* `type` - (Optional, string) Specify whether this load balancer is a public or internal facing load balancer. Accepted values are `PUBLIC` or `PRIVATE`. 
+The default is 'PUBLIC'.
 * `subnets` - (Required, array) The subnet where the load balancer will be provisioned. Only one subnet is supported.
 * `protocols` - (Optional, array) A nested block describing the protocols assigned to load balancer. Nested `protocols` blocks have the following structure:
   * `frontend_protocol` - (Required, string) The frontend protocol. Accepted values are 'TCP', 'HTTP', and 'HTTPS'.
@@ -70,10 +58,6 @@ The following arguments are supported:
   * `session_stickiness` - (Optional, string) The SOURCE_IP for session stickiness.
   * `max_conn` - (Optional, integer) The maximum number of connections the listener can accept. The number must be 1 - 64000.
   * `tls_certificate_id` - (Optional, integer) The ID of the SSL/TLS certificate being used for a protocol. This ID should be specified when `frontend protocol` has a value of `HTTPS`.
-* `server_instances` - (Optional, array) A nested block describing the server instances for the load balancer. Nested `server_instances` blocks have the following structure:
-  * `private_ip_address` - (Required, string) The private IP address of a load balancer member.
-  * `weight` - (Optional, integer) The weight of a load balancer member.
-
 * `wait_time_minutes` - (Optional, integer) The duration, expressed in minutes, to wait for the lbaas instance to become available before declaring it as created. It is also the same amount of time waited for deletion to finish. The default value is `90`.
 
 ## Attributes Reference
@@ -82,8 +66,14 @@ The following attributes are exported:
 
 * `id` - The unique identifier of the created policy.
 * `datacenter` - The datacenter where the load balancer is provisioned. This is based on the subnet chosen while creating load-balancer.
-* `type` - Specifies whether a load balancer is `PUBLIC` or `PRIVATE`.
 * `status` - Specifies the operation status of the load balancer as `ONLINE` or `OFFLINE`.
 * `vip` - The virtual IP address of the load balancer.
 * `protocol_id` - The UUID of a load balancer protocol.
-* `member_id` - The UUID of a load balancer member.
+* `health_monitors` - A nested block describing the health_monitors assigned to the load balancer. Nested `health_monitors` blocks have the following structure:
+  * `protocol` - Backends protocol
+  * `port` - Backends port
+  * `interval` - Interval in seconds to perform 
+  * `max_retries` - Maximum retries
+  * `timeout` - Health check methods timeout in 
+  * `url_path` - If monitor is "HTTP", this specifies URL path
+  * `monitor_id` - Health Monitor UUID

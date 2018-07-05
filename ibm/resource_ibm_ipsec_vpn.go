@@ -2,6 +2,11 @@ package ibm
 
 import (
 	"fmt"
+	"log"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
@@ -11,10 +16,6 @@ import (
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
-	"log"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func resourceIBMIPSecVPN() *schema.Resource {
@@ -45,22 +46,22 @@ func resourceIBMIPSecVPN() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"Authentication": {
+						"authentication": {
 							Type:         schema.TypeString,
 							Optional:     true,
 							ValidateFunc: validateAuthProtocol,
 						},
-						"Encryption": {
+						"encryption": {
 							Type:         schema.TypeString,
 							Optional:     true,
 							ValidateFunc: validateEncyptionProtocol,
 						},
-						"Diffie-Hellman-Group": {
+						"diffie_hellman_group": {
 							Type:         schema.TypeInt,
 							Optional:     true,
 							ValidateFunc: validateDiffieHellmanGroup,
 						},
-						"Keylife": {
+						"keylife": {
 							Type:         schema.TypeInt,
 							Optional:     true,
 							ValidateFunc: validatekeylife,
@@ -73,25 +74,25 @@ func resourceIBMIPSecVPN() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"Authentication": {
+						"authentication": {
 							Type:         schema.TypeString,
 							Optional:     true,
 							Default:      "MD5",
 							ValidateFunc: validateAuthProtocol,
 						},
-						"Encryption": {
+						"encryption": {
 							Type:         schema.TypeString,
 							Optional:     true,
 							Default:      "3DES",
 							ValidateFunc: validateEncyptionProtocol,
 						},
-						"Diffie-Hellman-Group": {
+						"diffie_hellman_group": {
 							Type:         schema.TypeInt,
 							Optional:     true,
 							Default:      2,
 							ValidateFunc: validateDiffieHellmanGroup,
 						},
-						"Keylife": {
+						"keylife": {
 							Type:         schema.TypeInt,
 							Optional:     true,
 							Default:      3600,
@@ -105,11 +106,11 @@ func resourceIBMIPSecVPN() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"Remote_ip_adress": {
+						"remote_ip_adress": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"Internal_ip_adress": {
+						"internal_ip_adress": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -120,11 +121,11 @@ func resourceIBMIPSecVPN() *schema.Resource {
 					},
 				},
 			},
-			"Preshared_Key": {
+			"preshared_key": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"Customer_Peer_IP": {
+			"customer_peer_ip": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -141,16 +142,16 @@ func resourceIBMIPSecVPN() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"Remote_ip_adress": {
+						"remote_ip_adress": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"Remote_IP_CIDR": {
+						"remote_ip_cidr": {
 							Type:         schema.TypeString,
 							ValidateFunc: validateCIDR,
 							Required:     true,
 						},
-						"AccountID": {
+						"account_id": {
 							Type:     schema.TypeInt,
 							Optional: true,
 						},
@@ -185,7 +186,7 @@ func resourceIBMIPSecVpnCreate(d *schema.ResourceData, meta interface{}) error {
 	for _, priceidd := range priceidds {
 		listofpriceids = append(listofpriceids, *priceidd.Id)
 	}
-	actualpriceid, err := product.Returnpriceidaccordingtopackageid("IPSEC - Standard", listofpriceids, sess, 0)
+	actualpriceid, err := product.GetPriceIDByPackageIdandLocationGroups(sess, listofpriceids, 0, "IPSEC - Standard")
 	priceItems := []datatypes.Product_Item_Price{}
 	priceItem := datatypes.Product_Item_Price{
 		Id: &actualpriceid,
@@ -349,39 +350,39 @@ func resourceIBMIPSecVPNUpdate(d *schema.ResourceData, meta interface{}) error {
 	if d.HasChange("phase_one") {
 		for _, e := range d.Get("phase_one").([]interface{}) {
 			value := e.(map[string]interface{})
-			auth := value["Authentication"].(string)
+			auth := value["authentication"].(string)
 			vpn.PhaseOneAuthentication = &auth
-			encryption := value["Encryption"].(string)
+			encryption := value["encryption"].(string)
 			vpn.PhaseOneEncryption = &encryption
-			diffiehellman := value["Diffie-Hellman-Group"].(int)
+			diffiehellman := value["diffie_hellman_group"].(int)
 			vpn.PhaseOneDiffieHellmanGroup = &diffiehellman
-			keylife := value["Keylife"].(int)
+			keylife := value["keylife"].(int)
 			vpn.PhaseOneKeylife = &keylife
 		}
 	}
 	if d.HasChange("phase_two") {
 		for _, e := range d.Get("phase_two").([]interface{}) {
 			value := e.(map[string]interface{})
-			auth := value["Authentication"].(string)
+			auth := value["authentication"].(string)
 			vpn.PhaseTwoAuthentication = &auth
-			encryption := value["Encryption"].(string)
+			encryption := value["encryption"].(string)
 			vpn.PhaseTwoEncryption = &encryption
-			diffiehellman := value["Diffie-Hellman-Group"].(int)
+			diffiehellman := value["diffie_hellman_group"].(int)
 			vpn.PhaseTwoDiffieHellmanGroup = &diffiehellman
-			keylife := value["Keylife"].(int)
+			keylife := value["keylife"].(int)
 			vpn.PhaseTwoKeylife = &keylife
 		}
 	}
-	if d.HasChange("Preshared_Key") {
-		presharedkey := d.Get("Preshared_Key").(string)
+	if d.HasChange("preshared_key") {
+		presharedkey := d.Get("preshared_key").(string)
 		vpn.PresharedKey = &presharedkey
 	}
-	if _, ok := d.GetOk("Customer_Peer_IP"); ok {
-		if d.HasChange("Customer_Peer_IP") {
-			customeripaddr := d.Get("Customer_Peer_IP").(string)
+	if _, ok := d.GetOk("customer_peer_ip"); ok {
+		if d.HasChange("customer_peer_ip") {
+			customeripaddr := d.Get("customer_peer_ip").(string)
 			vpn.CustomerPeerIpAddress = &customeripaddr
 		} else {
-			customeripaddr := d.Get("Customer_Peer_IP").(string)
+			customeripaddr := d.Get("customer_peer_ip").(string)
 			vpn.CustomerPeerIpAddress = &customeripaddr
 		}
 		_, err = services.GetNetworkTunnelModuleContextService(sess).Id(vpnID).EditObject(&vpn)
@@ -413,9 +414,9 @@ func resourceIBMIPSecVPNUpdate(d *schema.ResourceData, meta interface{}) error {
 	if d.HasChange("address_translation") {
 		for _, e := range d.Get("address_translation").([]interface{}) {
 			value := e.(map[string]interface{})
-			customerIP := value["Remote_ip_adress"].(string)
+			customerIP := value["remote_ip_adress"].(string)
 			addresstranslation.CustomerIpAddress = &customerIP
-			internalIP := value["Internal_ip_adress"].(string)
+			internalIP := value["internal_ip_adress"].(string)
 			addresstranslation.InternalIpAddress = &internalIP
 			notes := value["notes"].(string)
 			addresstranslation.Notes = &notes
@@ -429,11 +430,11 @@ func resourceIBMIPSecVPNUpdate(d *schema.ResourceData, meta interface{}) error {
 		for _, e := range d.Get("remote_subnet").([]interface{}) {
 			remoteSubnet := datatypes.Network_Customer_Subnet{}
 			value := e.(map[string]interface{})
-			customerIP := value["Remote_ip_adress"].(string)
+			customerIP := value["remote_ip_adress"].(string)
 			s := strings.Split(customerIP, "/")
 			ip, cidr := s[0], s[1]
 			actualcidr, _ := strconv.Atoi(cidr)
-			accountID := value["AccountID"].(int)
+			accountID := value["accountid"].(int)
 			remoteSubnet.NetworkIdentifier = &ip
 			remoteSubnet.Cidr = &actualcidr
 			remoteSubnet.AccountId = &accountID

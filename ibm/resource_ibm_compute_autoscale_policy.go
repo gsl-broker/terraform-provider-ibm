@@ -45,10 +45,7 @@ func resourceIBMComputeAutoScalePolicy() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
+
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -163,7 +160,7 @@ func resourceIBMComputeAutoScalePolicyCreate(d *schema.ResourceData, meta interf
 			Cooldown:     sl.Int(d.Get("cooldown").(int)),
 		}
 
-		if *opts.Cooldown <= 0 || *opts.Cooldown > 864000 {
+		if *opts.Cooldown < 0 || *opts.Cooldown > 864000 {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", "cooldown must be between 0 seconds and 10 days.")
 		}
 
@@ -173,10 +170,6 @@ func resourceIBMComputeAutoScalePolicyCreate(d *schema.ResourceData, meta interf
 		},
 		}
 		opts.ScaleActions[0].TypeId = sl.Int(1)
-
-		if *opts.ScaleActions[0].Amount <= 0 {
-			return fmt.Errorf("Error retrieving scalePolicy: %s", "scale_amount should be greater than 0.")
-		}
 		if *opts.ScaleActions[0].ScaleType != "ABSOLUTE" && *opts.ScaleActions[0].ScaleType != "RELATIVE" && *opts.ScaleActions[0].ScaleType != "PERCENT" {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", "scale_type should be ABSOLUTE, RELATIVE, or PERCENT.")
 		}
@@ -340,7 +333,11 @@ func resourceIBMComputeAutoScalePolicyUpdate(d *schema.ResourceData, meta interf
 		return fmt.Errorf("Error updating scale policy: %s", err)
 	}
 
-	return nil
+	d.SetId(strconv.Itoa(scalePolicyId))
+	log.Printf("[INFO] Scale Policy: %s", d.Id())
+
+	return resourceIBMComputeAutoScalePolicyRead(d, meta)
+
 }
 
 func resourceIBMComputeAutoScalePolicyDelete(d *schema.ResourceData, meta interface{}) error {

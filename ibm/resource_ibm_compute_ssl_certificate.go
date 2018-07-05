@@ -23,11 +23,6 @@ func resourceIBMComputeSSLCertificate() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
-				Type:     schema.TypeInt,
-				Computed: true,
-				ForceNew: true,
-			},
 
 			"certificate": &schema.Schema{
 				Type:      schema.TypeString,
@@ -41,6 +36,19 @@ func resourceIBMComputeSSLCertificate() *schema.Resource {
 				Optional:  true,
 				ForceNew:  true,
 				StateFunc: normalizeCert,
+			},
+
+			"certificate_signing_request": &schema.Schema{
+				Type:      schema.TypeString,
+				Optional:  true,
+				ForceNew:  true,
+				StateFunc: normalizeCert,
+			},
+
+			"notes": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
 			},
 
 			"private_key": &schema.Schema{
@@ -106,9 +114,11 @@ func resourceIBMComputeSSLCertificateCreate(d *schema.ResourceData, meta interfa
 	service := services.GetSecurityCertificateService(sess.SetRetries(0))
 
 	template := datatypes.Security_Certificate{
-		Certificate:             sl.String(d.Get("certificate").(string)),
-		IntermediateCertificate: sl.String(d.Get("intermediate_certificate").(string)),
-		PrivateKey:              sl.String(d.Get("private_key").(string)),
+		Certificate:               sl.String(d.Get("certificate").(string)),
+		IntermediateCertificate:   sl.String(d.Get("intermediate_certificate").(string)),
+		PrivateKey:                sl.String(d.Get("private_key").(string)),
+		CertificateSigningRequest: sl.String(d.Get("certificate_signing_request").(string)),
+		Notes: sl.String(d.Get("notes").(string)),
 	}
 
 	log.Printf("[INFO] Creating Security Certificate")
@@ -167,11 +177,10 @@ func resourceIBMComputeSSLCertificateUpdate(d *schema.ResourceData, meta interfa
 func resourceIBMComputeSSLCertificateDelete(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 	service := services.GetSecurityCertificateService(sess)
-
-	_, err := service.Id(d.Get("id").(int)).DeleteObject()
-
+	id, err := strconv.Atoi(d.Id())
+	_, err = service.Id(id).DeleteObject()
 	if err != nil {
-		return fmt.Errorf("Error deleting Security Certificate %s: %s", d.Get("id"), err)
+		return fmt.Errorf("Error deleting Security Certificate %d: %s", id, err)
 	}
 
 	return nil

@@ -250,7 +250,6 @@ func findDedicatedFirewallByOrderId(sess *session.Session, orderId int, d *schem
 		Target:  []string{"complete"},
 		Refresh: func() (interface{}, string, error) {
 			fwID, _ := strconv.Atoi(d.Id())
-			log.Print("Log from line 253")
 			log.Print(d.Id())
 			if d.Id() != "" {
 				upgraderequest, err = services.GetNetworkVlanFirewallService(sess).

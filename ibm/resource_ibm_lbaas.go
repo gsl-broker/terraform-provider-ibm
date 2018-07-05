@@ -69,9 +69,12 @@ func resourceIBMLbaas() *schema.Resource {
 				Description: "Description of a load balancer.",
 			},
 			"type": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "Specifies if a load balancer is public or private",
+				Type:         schema.TypeString,
+				Optional:     true,
+				Default:      "PUBLIC",
+				ForceNew:     true,
+				Description:  "Specifies if a load balancer is public or private",
+				ValidateFunc: validateAllowedStringValue([]string{"PUBLIC", "PRIVATE"}),
 			},
 			"datacenter": {
 				Type:     schema.TypeString,
@@ -100,7 +103,6 @@ func resourceIBMLbaas() *schema.Resource {
 				Type:        schema.TypeSet,
 				Description: "Protocols to be assigned to this load balancer.",
 				Optional:    true,
-				MaxItems:    4,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"frontend_protocol": {
@@ -165,10 +167,47 @@ func resourceIBMLbaas() *schema.Resource {
 				Optional: true,
 				Default:  90,
 			},
+			"health_monitors": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"protocol": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"port": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"interval": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"max_retries": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"timeout": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"url_path": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"monitor_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
+			},
 			"server_instances": {
 				Type:        schema.TypeSet,
 				Description: "The Server instances for this load balancer",
 				Optional:    true,
+				Removed:     "Please use the server instance resource instead",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"private_ip_address": {
@@ -230,6 +269,24 @@ func resourceIBMLbaasCreate(d *schema.ResourceData, meta interface{}) error {
 
 	d.SetId(*lbaasLB.Uuid)
 
+	if v, ok := d.GetOk("protocols"); ok && v.(*schema.Set).Len() > 0 {
+		listenerService := services.GetNetworkLBaaSListenerService(sess.SetRetries(0))
+		protocolParam, err := expandProtocols(v.(*schema.Set).List())
+		if err != nil {
+			return fmt.Errorf("Error adding protocols to Load balancer: %s", err)
+		}
+		_, err = listenerService.UpdateLoadBalancerProtocols(sl.String(d.Id()), protocolParam)
+		if err != nil {
+			return fmt.Errorf("Error adding protocols: %#v", err)
+		}
+		_, err = waitForLbaasLBAvailable(d, meta)
+		if err != nil {
+			return fmt.Errorf(
+				"Error waiting for load balancer (%s) to become ready: %s", d.Id(), err)
+		}
+
+	}
+
 	return resourceIBMLbaasRead(d, meta)
 }
 
@@ -237,7 +294,7 @@ func resourceIBMLbaasRead(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 	service := services.GetNetworkLBaaSLoadBalancerService(sess)
 
-	result, err := service.Mask("datacenter,members,listeners.defaultPool,listeners.defaultPool.sessionAffinity").GetLoadBalancer(sl.String(d.Id()))
+	result, err := service.Mask("datacenter,members,listeners.defaultPool,listeners.defaultPool.sessionAffinity,listeners.defaultPool.healthMonitor,healthMonitors").GetLoadBalancer(sl.String(d.Id()))
 	if err != nil {
 		return fmt.Errorf("Error retrieving load balancer: %s", err)
 	}
@@ -251,15 +308,14 @@ func resourceIBMLbaasRead(d *schema.ResourceData, meta interface{}) error {
 	//TODO THis is public subnet and we need to set the private subnet
 	//subnets := [1]int{*result.IpAddress.SubnetId}
 	//d.Set("subnets", subnets)
-
 	d.Set("name", result.Name)
 	d.Set("description", result.Description)
 	d.Set("datacenter", result.Datacenter.Name)
 	d.Set("type", lbType)
 	d.Set("status", result.OperatingStatus)
 	d.Set("vip", result.Address)
+	d.Set("health_monitors", flattenHealthMonitors(result.Listeners))
 	d.Set("protocols", flattenProtocols(result.Listeners))
-	d.Set("server_instances", flattenServerInstances(result.Members))
 	return nil
 }
 
@@ -319,47 +375,6 @@ func resourceIBMLbaasUpdate(d *schema.ResourceData, meta interface{}) error {
 
 		d.SetPartial("protocols")
 	}
-	memberService := services.GetNetworkLBaaSMemberService(sess)
-	if d.HasChange("server_instances") {
-		o, n := d.GetChange("server_instances")
-		os := o.(*schema.Set)
-		ns := n.(*schema.Set)
-
-		add := expandMembers(ns.Difference(os).List())
-		rem := os.Difference(ns).List()
-		removeList := make([]string, len(rem), len(rem))
-		for i, remove := range rem {
-			data := remove.(map[string]interface{})
-			if v, ok := data["member_id"]; ok && v.(string) != "" {
-				removeList[i] = v.(string)
-			}
-		}
-		if len(removeList) > 0 {
-			_, err := memberService.DeleteLoadBalancerMembers(sl.String(d.Id()), removeList)
-			if err != nil {
-				return fmt.Errorf("Error removing server instances: %#v", err)
-			}
-			_, err = waitForLbaasLBAvailable(d, meta)
-			if err != nil {
-				return fmt.Errorf(
-					"Error waiting for load balancer (%s) to become ready: %s", d.Id(), err)
-			}
-		}
-
-		if len(add) > 0 {
-			_, err := memberService.AddLoadBalancerMembers(sl.String(d.Id()), add)
-			if err != nil {
-				return fmt.Errorf("Error adding server instances: %#v", err)
-			}
-			_, err = waitForLbaasLBAvailable(d, meta)
-			if err != nil {
-				return fmt.Errorf(
-					"Error waiting for load balancer (%s) to become ready: %s", d.Id(), err)
-			}
-		}
-
-		d.SetPartial("server_instances")
-	}
 	d.Partial(false)
 
 	return resourceIBMLbaasRead(d, meta)
@@ -404,6 +419,8 @@ func buildLbaasLBProductOrderContainer(d *schema.ResourceData, sess *session.Ses
 	// 1. Get a package
 	name := d.Get("name").(string)
 	subnets := d.Get("subnets").([]interface{})
+	lbType := d.Get("type").(string)
+
 	subnetsParam := []datatypes.Network_Subnet{}
 	for _, subnet := range subnets {
 		subnetItem := datatypes.Network_Subnet{
@@ -450,16 +467,8 @@ func buildLbaasLBProductOrderContainer(d *schema.ResourceData, sess *session.Ses
 		productOrderContainer.Description = sl.String(d.(string))
 	}
 
-	if v, ok := d.GetOk("protocols"); ok && v.(*schema.Set).Len() > 0 {
-		protocolParam, err := expandProtocols(v.(*schema.Set).List())
-		if err != nil {
-			return &datatypes.Container_Product_Order_Network_LoadBalancer_AsAService{}, err
-		}
-		productOrderContainer.ProtocolConfigurations = protocolParam
-	}
-
-	if v, ok := d.GetOk("server_instances"); ok && v.(*schema.Set).Len() > 0 {
-		productOrderContainer.ServerInstancesInformation = expandMembers(v.(*schema.Set).List())
+	if lbType == "PRIVATE" {
+		productOrderContainer.IsPublic = sl.Bool(false)
 	}
 
 	return &productOrderContainer, nil

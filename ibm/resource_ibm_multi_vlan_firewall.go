@@ -2,6 +2,11 @@ package ibm
 
 import (
 	"fmt"
+	"log"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/filter"
@@ -9,10 +14,6 @@ import (
 	"github.com/softlayer/softlayer-go/helpers/product"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/sl"
-	"log"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func resourceIBMMultiVlanFirewall() *schema.Resource {

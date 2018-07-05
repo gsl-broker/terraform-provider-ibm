@@ -74,10 +74,11 @@ func resourceIBMComputeDedicatedHost() *schema.Resource {
 				Computed:    true,
 				Description: "The capacity that the dedicated host's memory allocation is restricted to.",
 			},
+			//waiting time modified to 24 hours
 			"wait_time_minutes": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  90,
+				Default:  1440,
 			},
 			"tags": {
 				Type:     schema.TypeSet,

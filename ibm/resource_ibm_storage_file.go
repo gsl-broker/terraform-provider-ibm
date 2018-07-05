@@ -1,6 +1,7 @@
 package ibm
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"regexp"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/terraform/helper/hashcode"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
@@ -26,16 +28,15 @@ const (
 	storageNasPackageType         = "ADDITIONAL_SERVICES_NETWORK_ATTACHED_STORAGE"
 	storageMask                   = "id,billingItem.orderItem.order.id"
 	storageDetailMask             = "id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress,properties[type]" +
-		",serviceResourceName,allowedIpAddresses,allowedSubnets,allowedVirtualGuests[id,allowedHost[name,credential[username,password]]],snapshotCapacityGb,osType,notes,billingItem[hourlyFlag]"
-	itemMask            = "id,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode],capacityRestrictionMinimum,capacityRestrictionMaximum,locationGroupId]"
-	enduranceType       = "Endurance"
-	performanceType     = "Performance"
-	portableType        = "Portable"
-	portablestorageType = "Portable"
-	nasType             = "NAS/FTP"
-	fileStorage         = "FILE_STORAGE"
-	blockStorage        = "BLOCK_STORAGE"
-	retryTime           = 5
+		",serviceResourceName,allowedIpAddresses[id,ipAddress,subnetId,allowedHost[name,credential[username,password]]],allowedSubnets[allowedHost[name,credential[username,password]]],allowedHardware[allowedHost[name,credential[username,password]]],allowedVirtualGuests[id,allowedHost[name,credential[username,password]]],snapshotCapacityGb,osType,notes,billingItem[hourlyFlag],serviceResource[datacenter[name]],schedules[dayOfWeek,hour,minute,retentionCount,type[keyname,name]]"
+	itemMask        = "id,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode],capacityRestrictionMinimum,capacityRestrictionMaximum,locationGroupId]"
+	enduranceType   = "Endurance"
+	performanceType = "Performance"
+	portableType    = "Portable"
+	nasType         = "NAS/FTP"
+	fileStorage     = "FILE_STORAGE"
+	blockStorage    = "BLOCK_STORAGE"
+	retryTime       = 5
 )
 
 var (
@@ -115,19 +116,19 @@ var (
 		80:    "100_4000_IOPS",
 		100:   "100_6000_IOPS",
 		250:   "100_6000_IOPS",
-		500:   "100_6000_IOPS",
-		1000:  "100_6000_IOPS",
-		2000:  "200_6000_IOPS",
-		3000:  "200_6000_IOPS",
-		4000:  "300_6000_IOPS",
-		5000:  "300_6000_IOPS",
-		6000:  "300_6000_IOPS",
-		7000:  "300_6000_IOPS",
-		8000:  "500_6000_IOPS",
-		9000:  "500_6000_IOPS",
-		10000: "1000_6000_IOPS",
-		11000: "1000_6000_IOPS",
-		12000: "1000_6000_IOPS",
+		500:   "100_10000_IOPS",
+		1000:  "100_20000_IOPS",
+		2000:  "200_40000_IOPS",
+		3000:  "200_48000_IOPS",
+		4000:  "300_48000_IOPS",
+		5000:  "300_48000_IOPS",
+		6000:  "300_48000_IOPS",
+		7000:  "300_48000_IOPS",
+		8000:  "500_48000_IOPS",
+		9000:  "500_48000_IOPS",
+		10000: "1000_48000_IOPS",
+		11000: "1000_48000_IOPS",
+		12000: "1000_48000_IOPS",
 	}
 
 	// Map hourly storage value to performance IOPS keyName in SoftLayer_Product_Item
@@ -184,6 +185,16 @@ var (
 			},
 		},
 	}
+
+	snapshotDay = map[string]string{
+		"0": "SUNDAY",
+		"1": "MONDAY",
+		"2": "TUESDAY",
+		"3": "WEDNESDAY",
+		"4": "THURSDAY",
+		"5": "FRIDAY",
+		"6": "SATURDAY",
+	}
 )
 
 func resourceIBMStorageFile() *schema.Resource {
@@ -196,10 +207,6 @@ func resourceIBMStorageFile() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
 
 			"type": {
 				Type:         schema.TypeString,
@@ -222,7 +229,7 @@ func resourceIBMStorageFile() *schema.Resource {
 
 			"iops": {
 				Type:     schema.TypeFloat,
-				Optional: true,
+				Required: true,
 				ForceNew: true,
 			},
 
@@ -280,33 +287,38 @@ func resourceIBMStorageFile() *schema.Resource {
 			},
 
 			"snapshot_schedule": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Optional: true,
+				MaxItems: 3,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"schedule_type": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:         schema.TypeString,
+							Required:     true,
+							ValidateFunc: validateScheduleType,
 						},
 
 						"retention_count": {
 							Type:     schema.TypeInt,
-							Optional: true,
+							Required: true,
 						},
 
 						"minute": {
-							Type:     schema.TypeInt,
-							Optional: true,
+							Type:         schema.TypeInt,
+							Optional:     true,
+							ValidateFunc: validateMinute(0, 59),
 						},
 
 						"hour": {
-							Type:     schema.TypeInt,
-							Optional: true,
+							Type:         schema.TypeInt,
+							Optional:     true,
+							ValidateFunc: validateHour(0, 23),
 						},
 
 						"day_of_week": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:         schema.TypeString,
+							Optional:     true,
+							ValidateFunc: validateDayOfWeek,
 						},
 
 						"enable": {
@@ -315,6 +327,7 @@ func resourceIBMStorageFile() *schema.Resource {
 						},
 					},
 				},
+				Set: resourceIBMFilSnapshotHash,
 			},
 			"mountpoint": {
 				Type:     schema.TypeString,
@@ -351,14 +364,7 @@ func resourceIBMStorageFileCreate(d *schema.ResourceData, meta interface{}) erro
 		err                   error
 	)
 
-	if storageType == nasType {
-		if _, ok := d.GetOk("iops"); ok {
-			return fmt.Errorf("Error while creating storage: iops value can't be specified if type is %s", nasType)
-		}
-		storageOrderContainer, err = buildNasProductOrderContainer(sess, capacity, datacenter, hourlyBilling)
-	} else {
-		storageOrderContainer, err = buildStorageProductOrderContainer(sess, storageType, iops, capacity, snapshotCapacity, fileStorage, datacenter, hourlyBilling)
-	}
+	storageOrderContainer, err = buildStorageProductOrderContainer(sess, storageType, iops, capacity, snapshotCapacity, fileStorage, datacenter, hourlyBilling)
 	if err != nil {
 		return fmt.Errorf("Error while creating storage:%s", err)
 	}
@@ -380,11 +386,6 @@ func resourceIBMStorageFileCreate(d *schema.ResourceData, meta interface{}) erro
 				Container_Product_Order: storageOrderContainer,
 				VolumeSize:              &capacity,
 				Iops:                    sl.Int(int(iops)),
-			}, sl.Bool(false))
-	case nasType:
-		receipt, err = services.GetProductOrderService(sess.SetRetries(0)).PlaceOrder(
-			&datatypes.Container_Product_Order_Network_Storage_Nas{
-				Container_Product_Order: storageOrderContainer,
 			}, sl.Bool(false))
 
 	default:
@@ -443,14 +444,12 @@ func resourceIBMStorageFileRead(d *schema.ResourceData, meta interface{}) error 
 		return fmt.Errorf("Error retrieving storage information: %s", err)
 	}
 
-	if storageType != nasType {
-		// Calculate IOPS
-		iops, err := getIops(storage, storageType)
-		if err != nil {
-			return fmt.Errorf("Error retrieving storage information: %s", err)
-		}
-		d.Set("iops", iops)
+	// Calculate IOPS
+	iops, err := getIops(storage, storageType)
+	if err != nil {
+		return fmt.Errorf("Error retrieving storage information: %s", err)
 	}
+	d.Set("iops", iops)
 
 	d.Set("type", storageType)
 	d.Set("capacity", *storage.CapacityGb)
@@ -467,7 +466,6 @@ func resourceIBMStorageFileRead(d *schema.ResourceData, meta interface{}) error 
 	// the data center short name is "dal06".
 	r, _ := regexp.Compile("[a-zA-Z]{3}[0-9]{2}")
 	d.Set("datacenter", strings.ToLower(r.FindString(*storage.ServiceResourceName)))
-
 	// Read allowed_ip_addresses
 	allowedIpaddressesList := make([]string, 0, len(storage.AllowedIpAddresses))
 	for _, allowedIpaddress := range storage.AllowedIpAddresses {
@@ -513,6 +511,35 @@ func resourceIBMStorageFileRead(d *schema.ResourceData, meta interface{}) error 
 	if storage.BillingItem != nil {
 		d.Set("hourly_billing", storage.BillingItem.HourlyFlag)
 	}
+
+	schds := make([]interface{}, len(storage.Schedules))
+	for i, schd := range storage.Schedules {
+		s := make(map[string]interface{})
+		s["retention_count"], _ = strconv.Atoi(*schd.RetentionCount)
+		if *schd.Minute != "-1" {
+
+			s["minute"], _ = strconv.Atoi(*schd.Minute)
+		}
+		if *schd.Hour != "-1" {
+			s["hour"], _ = strconv.Atoi(*schd.Hour)
+		}
+		if *schd.Active > 0 {
+			s["enable"], _ = strconv.ParseBool("true")
+		} else {
+			s["enable"], _ = strconv.ParseBool("false")
+		}
+
+		if *schd.DayOfWeek != "-1" {
+			s["day_of_week"] = snapshotDay[*schd.DayOfWeek]
+		}
+
+		stype := *schd.Type.Keyname
+		stype = stype[strings.LastIndex(stype, "_")+1:]
+		s["schedule_type"] = stype
+		schds[i] = s
+	}
+	d.Set("snapshot_schedule", schds)
+
 	return nil
 }
 
@@ -589,7 +616,7 @@ func resourceIBMStorageFileDelete(d *schema.ResourceData, meta interface{}) erro
 	var billingItem datatypes.Billing_Item
 	var err error
 	storageID, _ := strconv.Atoi(d.Id())
-	if d.Get("type") == portablestorageType {
+	if d.Get("type") == portableType {
 		billingItems, err := services.GetVirtualDiskImageService(sess).Id(storageID).GetBillingItem()
 		billingItem = billingItems.Billing_Item
 		if err != nil {
@@ -627,7 +654,7 @@ func resourceIBMStorageFileExists(d *schema.ResourceData, meta interface{}) (boo
 	if err != nil {
 		return false, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
-	if d.Get("type") == portablestorageType {
+	if d.Get("type") == portableType {
 		_, err = services.GetVirtualDiskImageService(sess).Id(storageID).GetObject()
 	} else {
 		_, err = services.GetNetworkStorageService(sess).
@@ -644,47 +671,6 @@ func resourceIBMStorageFileExists(d *schema.ResourceData, meta interface{}) (boo
 	return true, nil
 }
 
-func buildNasProductOrderContainer(
-	sess *session.Session,
-	capacity int,
-	datacenter string,
-	hourlyBilling bool) (datatypes.Container_Product_Order, error) {
-
-	pkg, err := product.GetPackageByType(sess, storageNasPackageType)
-	if err != nil {
-		return datatypes.Container_Product_Order{}, err
-	}
-
-	// Get all prices
-	productItems, err := product.GetPackageProducts(sess, *pkg.Id, itemMask)
-	if err != nil {
-		return datatypes.Container_Product_Order{}, err
-	}
-
-	targetItemPrices := []datatypes.Product_Item_Price{}
-
-	capacityPrice, err := getPrice(productItems, fmt.Sprintf("NAS_%d_GB", capacity), "nas", "", 0)
-	if err != nil {
-		return datatypes.Container_Product_Order{}, err
-	}
-
-	// Lookup the data center ID
-	dc, err := location.GetDatacenterByName(sess, datacenter)
-	if err != nil {
-		return datatypes.Container_Product_Order{},
-			fmt.Errorf("No data centers matching %s could be found", datacenter)
-	}
-
-	targetItemPrices = append(targetItemPrices, capacityPrice)
-	productOrderContainer := datatypes.Container_Product_Order{
-		PackageId:        pkg.Id,
-		Location:         sl.String(strconv.Itoa(*dc.Id)),
-		Prices:           targetItemPrices,
-		Quantity:         sl.Int(1),
-		UseHourlyPricing: sl.Bool(hourlyBilling),
-	}
-	return productOrderContainer, nil
-}
 func buildStorageProductOrderContainer(
 	sess *session.Session,
 	storageType string,
@@ -730,7 +716,7 @@ func buildStorageProductOrderContainer(
 	}
 	targetItemPrices = append(targetItemPrices, capacityPrice)
 
-	if storageType != portablestorageType {
+	if storageType != portableType {
 		iopsKeyName, err := getIopsKeyName(iops, capacity, storageType, hourlyBilling)
 		if err != nil {
 			return datatypes.Container_Product_Order{}, err
@@ -806,7 +792,7 @@ func findStorageByOrderId(sess *session.Session, orderId int, storagetype string
 		Pending: []string{"pending"},
 		Target:  []string{"complete"},
 		Refresh: func() (interface{}, string, error) {
-			if storagetype != portablestorageType {
+			if storagetype != portableType {
 				storage, err = services.GetAccountService(sess).
 					Filter(filter.Build(
 						filter.Path(filterPath).
@@ -850,7 +836,7 @@ func findStorageByOrderId(sess *session.Session, orderId int, storagetype string
 	}
 
 	var result, ok = pendingResult.(datatypes.Network_Storage)
-	if storagetype == portablestorageType {
+	if storagetype == portableType {
 		if result, ok := pendingResult.(datatypes.Virtual_Disk_Image); ok {
 			return datatypes.Network_Storage{}, result, nil
 		}
@@ -895,7 +881,7 @@ func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}, storagety
 			}
 
 			// Check volume status.
-			if storageType != nasType || storagetype != portablestorageType {
+			if storageType != nasType || storagetype != portableType {
 				log.Println("Checking volume status.")
 				resultStr := ""
 				err = sess.DoRequest(
@@ -944,7 +930,7 @@ func getCapacityKeyName(iops float64, capacity int, storageType string) (string,
 		return enduranceStorageMap[iops], nil
 	case performanceType:
 		return performanceStorageMap[capacity], nil
-	case portablestorageType:
+	case portableType:
 		return portablestorageMap[capacity], nil
 	}
 	return "", fmt.Errorf("Invalid storageType %s.", storageType)
@@ -1304,17 +1290,16 @@ func updateAllowedHardwareIds(d *schema.ResourceData, sess *session.Session, sto
 
 func enableStorageSnapshot(d *schema.ResourceData, sess *session.Session, storage datatypes.Network_Storage) error {
 	id := *storage.Id
-	for _, e := range d.Get("snapshot_schedule").([]interface{}) {
+	for _, e := range d.Get("snapshot_schedule").(*schema.Set).List() {
 		value := e.(map[string]interface{})
 		enable := value["enable"].(bool)
-		if enable {
-			_, err := services.GetNetworkStorageService(sess).
-				Id(id).
-				EnableSnapshots(sl.String(value["schedule_type"].(string)), sl.Int(value["retention_count"].(int)), sl.Int(value["minute"].(int)), sl.Int(value["hour"].(int)), sl.String(value["day_of_week"].(string)))
-			if err != nil {
-				return err
-			}
-		} else {
+		_, err := services.GetNetworkStorageService(sess).
+			Id(id).
+			EnableSnapshots(sl.String(value["schedule_type"].(string)), sl.Int(value["retention_count"].(int)), sl.Int(value["minute"].(int)), sl.Int(value["hour"].(int)), sl.String(value["day_of_week"].(string)))
+		if err != nil {
+			return err
+		}
+		if !enable {
 			_, err := services.GetNetworkStorageService(sess).
 				Id(id).
 				DisableSnapshots(sl.String(value["schedule_type"].(string)))
@@ -1345,12 +1330,29 @@ func updateNotes(d *schema.ResourceData, sess *session.Session, storage datatype
 
 func getStorageTypeFromKeyName(key string) (string, error) {
 	switch key {
-	case "FILE_STORAGE":
-		return nasType, nil
 	case "ENDURANCE_FILE_STORAGE":
 		return enduranceType, nil
 	case "PERFORMANCE_FILE_STORAGE":
 		return performanceType, nil
 	}
 	return "", fmt.Errorf("Couldn't find storage type for key %s", key)
+}
+
+func resourceIBMFilSnapshotHash(v interface{}) int {
+	var buf bytes.Buffer
+	m := v.(map[string]interface{})
+	buf.WriteString(fmt.Sprintf("%s-",
+		m["schedule_type"].(string)))
+	buf.WriteString(fmt.Sprintf("%s-",
+		m["day_of_week"].(string)))
+	buf.WriteString(fmt.Sprintf("%d-",
+		m["hour"].(int)))
+
+	buf.WriteString(fmt.Sprintf("%d-",
+		m["minute"].(int)))
+
+	buf.WriteString(fmt.Sprintf("%d-",
+		m["retention_count"].(int)))
+
+	return hashcode.String(buf.String())
 }
