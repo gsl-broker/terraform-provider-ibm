@@ -250,7 +250,8 @@ func findDedicatedFirewallByOrderId(sess *session.Session, orderId int, d *schem
 		Target:  []string{"complete"},
 		Refresh: func() (interface{}, string, error) {
 			fwID, _ := strconv.Atoi(d.Id())
-			if ok := d.HasChange("addon_configuration"); ok {
+			log.Print(d.Id())
+			if d.Id() != "" {
 				upgraderequest, err = services.GetNetworkVlanFirewallService(sess).
 					Id(fwID).
 					Mask("status").
@@ -279,12 +280,15 @@ func findDedicatedFirewallByOrderId(sess *session.Session, orderId int, d *schem
 					return datatypes.Network_Vlan{}, "", err
 				}
 			}
-			if *upgraderequest.Status.Name == "Complete" {
-				return upgraderequest, "complete", nil
-			} else if len(vlans) == 1 {
+			if len(vlans) == 1 {
 				return vlans[0], "complete", nil
 			} else if len(firewalls) == 1 {
 				return firewalls[0], "complete", nil
+			} else if d.Id() != "" {
+				if *upgraderequest.Status.Name != "Complete" {
+					return nil, "pending", nil
+				}
+				return upgraderequest, "complete", nil
 			} else if len(vlans) == 0 || len(firewalls) == 0 || *upgraderequest.Status.Name != "Complete" {
 				return nil, "pending", nil
 			}
@@ -301,7 +305,7 @@ func findDedicatedFirewallByOrderId(sess *session.Session, orderId int, d *schem
 	if err != nil {
 		return datatypes.Network_Vlan{}, datatypes.Network_Gateway{}, datatypes.Product_Upgrade_Request{}, err
 	}
-	if ok := d.HasChange("addon_configuration"); ok {
+	if d.Id() != "" {
 		if result, ok := pendingResult.(datatypes.Product_Upgrade_Request); ok {
 			return datatypes.Network_Vlan{}, datatypes.Network_Gateway{}, result, nil
 		}
