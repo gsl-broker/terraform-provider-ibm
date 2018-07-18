@@ -886,7 +886,7 @@ func getMonthlyGatewayOrder(d dataRetriever, meta interface{}) (datatypes.Contai
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
-        sriovEnabled, err := getItemPriceId(items, "sriov_enabled", "SRIOV_ENABLED")
+	sriovEnabled, err := getItemPriceId(items, "sriov_enabled", "SRIOV_ENABLED")
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
