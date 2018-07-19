@@ -45,7 +45,6 @@ func resourceIBMComputeAutoScalePolicy() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -291,7 +290,7 @@ func resourceIBMComputeAutoScalePolicyUpdate(d *schema.ResourceData, meta interf
 
 	if d.HasChange("scale_amount") {
 		template.ScaleActions[0].Amount = sl.Int(d.Get("scale_amount").(int))
-		if *template.ScaleActions[0].Amount <= 0 {
+		if *template.ScaleActions[0].Amount <= 0 && *template.ScaleActions[0].ScaleType == "ABSOLUTE" {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", "scale_amount should be greater than 0.")
 		}
 	}
@@ -304,6 +303,7 @@ func resourceIBMComputeAutoScalePolicyUpdate(d *schema.ResourceData, meta interf
 	}
 
 	if _, ok := d.GetOk("triggers"); ok {
+
 		template.OneTimeTriggers, err = prepareOneTimeTriggers(d)
 		if err != nil {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", err)
