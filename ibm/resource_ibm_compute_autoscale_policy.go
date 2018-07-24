@@ -240,76 +240,44 @@ func resourceIBMComputeAutoScalePolicyRead(d *schema.ResourceData, meta interfac
 func resourceIBMComputeAutoScalePolicyUpdate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 	scalePolicyService := services.GetScalePolicyService(sess)
-	//serviceScaleGroup := services.GetScaleGroupService(sess)
 	scalePolicyTriggerService := services.GetScalePolicyTriggerService(sess)
 	scalePolicyServiceNoRetry := services.GetScalePolicyService(sess.SetRetries(0))
 	appendtriggerstoexisting := d.Get("append_triggers_to_existing").(bool)
-	//groupId := d.Get("scale_group_id").(int)
 	policyId, err := strconv.Atoi(d.Id())
-	log.Print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~>>>>>>>>>")
-	log.Print(policyId)
-
-	//policyName := d.Get("name").(string)
-
-	//data, err := serviceScaleGroup.Id(groupId).Mask("mask[id,name]").GetPolicies()
-	//data2, err := scalePolicyService.Id(policyId).GetObject()
-	log.Print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-
-	// var scalePolicyId int
-	// for index, element := range data {
-	// 	log.Printf("%d", index)
-	// 	if *element.Name == policyName {
-	// 		scalePolicyId = *element.Id
-	// 	}
-	// }
 	scalePolicyId := policyId
 	if err != nil {
 		return fmt.Errorf("Not a valid scale policy ID, IN UPDATE must be an integer: %s", err)
 	}
-
 	scalePolicy, err := scalePolicyService.Id(scalePolicyId).Mask(strings.Join(IBMComputeAutoScalePolicyObjectMask, ";")).GetObject()
-	log.Printf("%s", *scalePolicy.Name)
-	log.Printf("%d", *scalePolicy.ScaleGroupId)
-	log.Printf("%d", *scalePolicy.ScaleActions[0].Amount)
-	log.Printf("%s", *scalePolicy.ScaleActions[0].ScaleType)
-	log.Printf("%d", scalePolicyId)
+
 	if err != nil {
 		return fmt.Errorf("Error retrieving scalePolicy: %s", err)
 	}
-
 	var template datatypes.Scale_Policy
-
 	template.Id = sl.Int(scalePolicyId)
-	log.Printf("%d", template.Id)
+
 	if d.HasChange("name") {
 		template.Name = sl.String(d.Get("name").(string))
 	}
-
 	if d.HasChange("scale_type") || d.HasChange("scale_amount") {
 		template.ScaleActions = make([]datatypes.Scale_Policy_Action_Scale, 1)
 		template.ScaleActions[0].Id = scalePolicy.ScaleActions[0].Id
-		log.Printf("%d", scalePolicy.ScaleActions[0].Id)
 		template.ScaleActions[0].TypeId = sl.Int(1)
+		template.ScaleActions[0].ScaleType = sl.String(d.Get("scale_type").(string))
 	}
-
 	if d.HasChange("scale_type") {
 		template.ScaleActions[0].ScaleType = sl.String(d.Get("scale_type").(string))
 		if *template.ScaleActions[0].ScaleType != "ABSOLUTE" && *template.ScaleActions[0].ScaleType != "RELATIVE" && *template.ScaleActions[0].ScaleType != "PERCENT" {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", "scale_type should be ABSOLUTE, RELATIVE, or PERCENT.")
 		}
 	}
-
 	if d.HasChange("scale_amount") {
 		template.ScaleActions[0].Amount = sl.Int(d.Get("scale_amount").(int))
-		//defect fixed with this condition...............but for editing name this loop is causing error
-		// if *template.ScaleActions[0].ScaleType == "ABSOLUTE" && *template.ScaleActions[0].Amount <= 0 {
-		// 	return fmt.Errorf("scale_amount should be greater than 0.")
-		// }
-		if *scalePolicy.ScaleActions[0].ScaleType == "ABSOLUTE" && *scalePolicy.ScaleActions[0].Amount <= 0 {
+
+		if *template.ScaleActions[0].ScaleType == "ABSOLUTE" && *template.ScaleActions[0].Amount <= 0 {
 			return fmt.Errorf("scale_amount should be greater than 0.")
 		}
 	}
-
 	if d.HasChange("cooldown") {
 		template.Cooldown = sl.Int(d.Get("cooldown").(int))
 		if *template.Cooldown <= 0 || *template.Cooldown > 864000 {
