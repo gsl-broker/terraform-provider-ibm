@@ -216,7 +216,7 @@ func resourceIBMComputeAutoScalePolicyRead(d *schema.ResourceData, meta interfac
 		return fmt.Errorf("Not a valid scale policy ID, IN READ must be an integer: %s", err)
 	}
 
-	log.Printf("[INFO] Reading Scale Polocy: %d", scalePolicyId)
+	log.Printf("[INFO] Reading Scale Policy: %d", scalePolicyId)
 	scalePolicy, err := service.Id(scalePolicyId).Mask(strings.Join(IBMComputeAutoScalePolicyObjectMask, ";")).GetObject()
 	if err != nil {
 		return fmt.Errorf("Error retrieving Scale Policy: %s", err)
@@ -240,61 +240,44 @@ func resourceIBMComputeAutoScalePolicyRead(d *schema.ResourceData, meta interfac
 func resourceIBMComputeAutoScalePolicyUpdate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 	scalePolicyService := services.GetScalePolicyService(sess)
-	serviceScaleGroup := services.GetScaleGroupService(sess)
 	scalePolicyTriggerService := services.GetScalePolicyTriggerService(sess)
 	scalePolicyServiceNoRetry := services.GetScalePolicyService(sess.SetRetries(0))
 	appendtriggerstoexisting := d.Get("append_triggers_to_existing").(bool)
-	groupId := d.Get("scale_group_id").(int)
-
-	policyName := d.Get("name").(string)
-
-	data, err := serviceScaleGroup.Id(groupId).Mask("mask[id,name]").GetPolicies()
-
-	var scalePolicyId int
-	for index, element := range data {
-		log.Printf("%d", index)
-		if *element.Name == policyName {
-			scalePolicyId = *element.Id
-		}
-	}
+	policyId, err := strconv.Atoi(d.Id())
+	scalePolicyId := policyId
 	if err != nil {
 		return fmt.Errorf("Not a valid scale policy ID, IN UPDATE must be an integer: %s", err)
 	}
-
 	scalePolicy, err := scalePolicyService.Id(scalePolicyId).Mask(strings.Join(IBMComputeAutoScalePolicyObjectMask, ";")).GetObject()
 
 	if err != nil {
 		return fmt.Errorf("Error retrieving scalePolicy: %s", err)
 	}
-
 	var template datatypes.Scale_Policy
-
 	template.Id = sl.Int(scalePolicyId)
 
 	if d.HasChange("name") {
 		template.Name = sl.String(d.Get("name").(string))
 	}
-
 	if d.HasChange("scale_type") || d.HasChange("scale_amount") {
 		template.ScaleActions = make([]datatypes.Scale_Policy_Action_Scale, 1)
 		template.ScaleActions[0].Id = scalePolicy.ScaleActions[0].Id
 		template.ScaleActions[0].TypeId = sl.Int(1)
+		template.ScaleActions[0].ScaleType = sl.String(d.Get("scale_type").(string))
 	}
-
 	if d.HasChange("scale_type") {
 		template.ScaleActions[0].ScaleType = sl.String(d.Get("scale_type").(string))
 		if *template.ScaleActions[0].ScaleType != "ABSOLUTE" && *template.ScaleActions[0].ScaleType != "RELATIVE" && *template.ScaleActions[0].ScaleType != "PERCENT" {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", "scale_type should be ABSOLUTE, RELATIVE, or PERCENT.")
 		}
 	}
-
 	if d.HasChange("scale_amount") {
 		template.ScaleActions[0].Amount = sl.Int(d.Get("scale_amount").(int))
-		if *template.ScaleActions[0].Amount <= 0 && *template.ScaleActions[0].ScaleType == "ABSOLUTE" {
-			return fmt.Errorf("Error retrieving scalePolicy: %s", "scale_amount should be greater than 0.")
+
+		if *template.ScaleActions[0].ScaleType == "ABSOLUTE" && *template.ScaleActions[0].Amount <= 0 {
+			return fmt.Errorf("scale_amount should be greater than 0.")
 		}
 	}
-
 	if d.HasChange("cooldown") {
 		template.Cooldown = sl.Int(d.Get("cooldown").(int))
 		if *template.Cooldown <= 0 || *template.Cooldown > 864000 {
