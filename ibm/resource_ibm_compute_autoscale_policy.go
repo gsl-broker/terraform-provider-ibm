@@ -128,7 +128,6 @@ func resourceIBMComputeAutoScalePolicy() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  false,
-				ForceNew: true,
 			},
 			"tags": {
 				Type:     schema.TypeSet,
