@@ -238,15 +238,32 @@ func resourceIBMComputeAutoScalePolicyRead(d *schema.ResourceData, meta interfac
 
 func resourceIBMComputeAutoScalePolicyUpdate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
+	serviceScaleGroup := services.GetScaleGroupService(sess)
 	scalePolicyService := services.GetScalePolicyService(sess)
 	scalePolicyTriggerService := services.GetScalePolicyTriggerService(sess)
 	scalePolicyServiceNoRetry := services.GetScalePolicyService(sess.SetRetries(0))
 	appendtriggerstoexisting := d.Get("append_triggers_to_existing").(bool)
+
+	groupId := d.Get("scale_group_id").(int)
 	policyId, err := strconv.Atoi(d.Id())
-	scalePolicyId := policyId
-	if err != nil {
-		return fmt.Errorf("Not a valid scale policy ID, IN UPDATE must be an integer: %s", err)
+	policyName := d.Get("name").(string)
+
+	var scalePolicyId int
+	if appendtriggerstoexisting && policyId == 0 {
+		data, err := serviceScaleGroup.Id(groupId).Mask("mask[id,name]").GetPolicies()
+		for index, element := range data {
+			log.Printf("%d", index)
+			if *element.Name == policyName {
+				policyId = *element.Id
+			}
+		}
+		if err != nil {
+			return fmt.Errorf("Not a valid scale policy ID, IN UPDATE must be an integer: %s", err)
+		}
 	}
+
+	scalePolicyId = policyId
+
 	scalePolicy, err := scalePolicyService.Id(scalePolicyId).Mask(strings.Join(IBMComputeAutoScalePolicyObjectMask, ";")).GetObject()
 
 	if err != nil {
@@ -272,7 +289,6 @@ func resourceIBMComputeAutoScalePolicyUpdate(d *schema.ResourceData, meta interf
 	}
 	if d.HasChange("scale_amount") {
 		template.ScaleActions[0].Amount = sl.Int(d.Get("scale_amount").(int))
-
 		if *template.ScaleActions[0].ScaleType == "ABSOLUTE" && *template.ScaleActions[0].Amount <= 0 {
 			return fmt.Errorf("scale_amount should be greater than 0.")
 		}
@@ -285,7 +301,6 @@ func resourceIBMComputeAutoScalePolicyUpdate(d *schema.ResourceData, meta interf
 	}
 
 	if _, ok := d.GetOk("triggers"); ok {
-
 		template.OneTimeTriggers, err = prepareOneTimeTriggers(d)
 		if err != nil {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", err)
@@ -303,12 +318,11 @@ func resourceIBMComputeAutoScalePolicyUpdate(d *schema.ResourceData, meta interf
 	// this condition deletes the existing triggers and update the newly added which does not support for updating the triggers in autoscale policy
 	if !appendtriggerstoexisting {
 		for _, triggerList := range scalePolicy.Triggers {
-			log.Printf("[INFO] DELETE TRIGGERS %d", *triggerList.Id)
 			scalePolicyTriggerService.Id(*triggerList.Id).DeleteObject()
 		}
 	}
+
 	time.Sleep(60)
-	log.Printf("[INFO] Updating scale policy: %d", scalePolicyId)
 	_, err = scalePolicyServiceNoRetry.Id(scalePolicyId).EditObject(&template)
 
 	if err != nil {
