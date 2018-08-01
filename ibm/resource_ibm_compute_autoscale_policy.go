@@ -66,6 +66,10 @@ func resourceIBMComputeAutoScalePolicy() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			"scale_group_name": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 			"triggers": {
 				Type:     schema.TypeSet,
 				Optional: true,
@@ -209,6 +213,7 @@ func resourceIBMComputeAutoScalePolicyCreate(d *schema.ResourceData, meta interf
 func resourceIBMComputeAutoScalePolicyRead(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 	service := services.GetScalePolicyService(sess)
+	serviceScaleGroup := services.GetScaleGroupService(sess)
 
 	scalePolicyId, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -221,11 +226,19 @@ func resourceIBMComputeAutoScalePolicyRead(d *schema.ResourceData, meta interfac
 		return fmt.Errorf("Error retrieving Scale Policy: %s", err)
 	}
 
+	scaleGroupId := *scalePolicy.ScaleGroupId
+	scalegroup, err := serviceScaleGroup.Id(scaleGroupId).Mask("mask[name]").GetObject()
+	if err != nil {
+		return fmt.Errorf("Error retrieving scale group: %s", err)
+	}
+
 	d.Set("name", scalePolicy.Name)
 	d.Set("cooldown", scalePolicy.Cooldown)
 	d.Set("scale_group_id", scalePolicy.ScaleGroupId)
+	d.Set("scale_group_name", *scalegroup.Name)
 	d.Set("scale_type", scalePolicy.ScaleActions[0].ScaleType)
 	d.Set("scale_amount", scalePolicy.ScaleActions[0].Amount)
+
 	triggers := make([]map[string]interface{}, 0)
 	triggers = append(triggers, readOneTimeTriggers(scalePolicy.OneTimeTriggers)...)
 	triggers = append(triggers, readRepeatingTriggers(scalePolicy.RepeatingTriggers)...)
