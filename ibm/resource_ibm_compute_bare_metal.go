@@ -1303,7 +1303,7 @@ func findMemoryItemPriceId(items []datatypes.Product_Item, d dataRetriever) (dat
 		for _, itemCategory := range item.Categories {
 			if *itemCategory.CategoryCode == "ram" {
 				availableMemories = availableMemories + *item.KeyName + "(" + *item.Description + ")" + ", "
-				if int(*item.capacity) == memory {
+				if int(*item.Capacity) == memory {
 					for _, price := range item.Prices {
 						if price.LocationGroupId == nil {
 							return datatypes.Product_Item_Price{Id: price.Id}, nil
