@@ -65,6 +65,10 @@ func resourceIBMSecurityGroupRule() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			"security_group_name": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -198,12 +202,18 @@ func resourceIBMSecurityGroupRuleRead(d *schema.ResourceData, meta interface{}) 
 		return fmt.Errorf("Error retrieving Security Group Rule: %s", err)
 	}
 
+	securityGroup, err := service.Id(sgID).GetObject()
+	if err != nil {
+		return fmt.Errorf("Error retrieving Security Group: %s", err)
+	}
+
 	if len(matchingrules) == 0 {
 		d.SetId("")
 		return nil
 	}
 
 	d.Set("direction", matchingrules[0].Direction)
+	d.Set("security_group_name", *securityGroup.Name)
 
 	if matchingrules[0].Ethertype != nil {
 		d.Set("ether_type", matchingrules[0].Ethertype)
