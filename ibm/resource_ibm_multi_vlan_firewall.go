@@ -22,7 +22,7 @@ func resourceIBMMultiVlanFirewall() *schema.Resource {
 		Read:     resourceIBMMultiVlanFirewallRead,
 		Delete:   resourceIBMFirewallDelete,
 		Update:   resourceIBMMultiVlanFirewallUpdate,
-		Exists:   resourceIBMFirewallExists,
+		Exists:   resourceIBMMultiVLanFirewallExists,
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
@@ -243,12 +243,12 @@ func resourceIBMMultiVlanFirewallRead(d *schema.ResourceData, meta interface{}) 
 			addonConfiguration = append(addonConfiguration, *elem.Description)
 		}
 	}
-	pod := *firewalls[0].NetworkFirewall.BillingItem.Notes
-	pod = "pod" + strings.SplitAfter(pod, "pod")[1]
-	d.Set("pod", &pod)
 	if len(addonConfiguration) > 0 {
 		d.Set("addon_configuration", addonConfiguration)
 	}
+	pod := *firewalls[0].NetworkFirewall.BillingItem.Notes
+	pod = "pod" + strings.SplitAfter(pod, "pod")[1]
+	d.Set("pod", &pod)
 	d.Set("name", *firewalls[0].Name)
 	d.Set("public_ip", *firewalls[0].PublicIpAddress.IpAddress)
 	d.Set("public_ipv6", firewalls[0].PublicIpv6Address.IpAddress)
@@ -374,6 +374,26 @@ func resourceIBMMultiVlanFirewallUpdate(d *schema.ResourceData, meta interface{}
 		}
 	}
 	return resourceIBMMultiVlanFirewallRead(d, meta)
+}
+
+func resourceIBMMultiVLanFirewallExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+	sess := meta.(ClientSession).SoftLayerSession()
+
+	fwID, _ := strconv.Atoi(d.Id())
+
+	firewalls, err := services.GetAccountService(sess).
+		Filter(filter.Build(
+			filter.Path("networkGateways.networkFirewall.id").
+				Eq(strconv.Itoa(fwID)))).
+		Mask(multiVlanMask).
+		GetNetworkGateways()
+	if err != nil {
+		return false, fmt.Errorf("Error retrieving firewall information: %s", err)
+	}
+	if firewalls[0].NetworkFirewall.BillingItem == nil {
+		return false, nil
+	}
+	return true, nil
 }
 
 //This function takes two lists and returns the difference between the two lists
