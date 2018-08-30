@@ -47,13 +47,13 @@ func resourceIBMMultiVlanFirewall() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"public_vlan_id": {
-				Type:     schema.TypeInt,
+			"public_vlan": {
+				Type:     schema.TypeString,
 				Computed: true,
 			},
 
-			"private_vlan_id": {
-				Type:     schema.TypeInt,
+			"private_vlan": {
+				Type:     schema.TypeString,
 				Computed: true,
 			},
 
@@ -253,8 +253,8 @@ func resourceIBMMultiVlanFirewallRead(d *schema.ResourceData, meta interface{}) 
 	d.Set("public_ip", *firewalls[0].PublicIpAddress.IpAddress)
 	d.Set("public_ipv6", firewalls[0].PublicIpv6Address.IpAddress)
 	d.Set("private_ip", *firewalls[0].PrivateIpAddress.IpAddress)
-	d.Set("public_vlan_id", *firewalls[0].PublicVlan.Id)
-	d.Set("private_vlan_id", *firewalls[0].PrivateVlan.Id)
+	d.Set("public_vlan", *firewalls[0].PublicVlan.PrimaryRouter.Hostname+"."+strconv.Itoa(*firewalls[0].PublicVlan.VlanNumber))
+	d.Set("private_vlan", *firewalls[0].PrivateVlan.PrimaryRouter.Hostname+"."+strconv.Itoa(*firewalls[0].PrivateVlan.VlanNumber))
 	d.Set("username", *firewalls[0].NetworkFirewall.ManagementCredentials.Username)
 	d.Set("password", *firewalls[0].NetworkFirewall.ManagementCredentials.Password)
 	return nil
