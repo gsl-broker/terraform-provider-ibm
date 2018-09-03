@@ -176,7 +176,7 @@ func WaitForOrderCompletion(
 				return billingOrderItem, "in progress", nil
 			}
 		},
-		Timeout:    10 * time.Minute,
+		Timeout:    30 * time.Minute,
 		Delay:      10 * time.Second,
 		MinTimeout: 10 * time.Second,
 	}
