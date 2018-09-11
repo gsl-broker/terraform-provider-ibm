@@ -40,7 +40,6 @@ func resourceIBMLb() *schema.Resource {
 			"connections": {
 				Type:     schema.TypeInt,
 				Required: true,
-				ForceNew: true,
 			},
 			"datacenter": {
 				Type:     schema.TypeString,
@@ -203,10 +202,24 @@ func resourceIBMLbCreate(d *schema.ResourceData, meta interface{}) error {
 
 	log.Printf("[INFO] Load Balancer ID: %s", d.Id())
 
-	return resourceIBMLbUpdate(d, meta)
+	return addSSLCertificate(d, meta)
 }
 
 func resourceIBMLbUpdate(d *schema.ResourceData, meta interface{}) error {
+	sess := meta.(ClientSession).SoftLayerSession()
+	vipID, _ := strconv.Atoi(d.Id())
+	dedicated := d.Get("dedicated").(bool)
+	if !dedicated {
+		_, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
+			Id(vipID).
+			UpgradeConnectionLimit()
+		if err != nil {
+			return fmt.Errorf("Error during upgrading connections of load balancer: %s", err)
+		}
+	}
+	return resourceIBMLbRead(d, meta)
+}
+func addSSLCertificate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 
 	vipID, _ := strconv.Atoi(d.Id())
@@ -221,7 +234,6 @@ func resourceIBMLbUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	return resourceIBMLbRead(d, meta)
 }
-
 func resourceIBMLbRead(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 	vipID, _ := strconv.Atoi(d.Id())
