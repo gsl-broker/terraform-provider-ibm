@@ -272,6 +272,7 @@ func resourceIBMCDNRead(d *schema.ResourceData, meta interface{}) error {
 func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 	/// Nothing to update for now. Not supported.
 	sess := meta.(ClientSession).SoftLayerSession()
+	str := ".cdnedge.bluemix.net"
 	log.Println("Updating cdn service...")
 	domain := d.Get("hostname").(string)
 	vendorname := d.Get("vendor_name").(string)
@@ -279,25 +280,171 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 	originaddress := d.Get("origin_address").(string)
 	protocol := d.Get("protocol").(string)
 	httpport := d.Get("httpport").(int)
+	httpsport := d.Get("httpsport").(int)
+	path := d.Get("path").(string)
+	cname := d.Get("cname").(string)
+	header := d.Get("header").(string)
+	bucketname := d.Get("bucketname").(string)
+	fileextension := d.Get("fileextension").(string)
+	respectheaders := d.Get("respectheaders").(bool)
 	uniqueId := d.Id()
+	if cname != "0" {
+		cname = cname + str
+	}
+	if cname == "0" {
+		cname = ""
+	}
 	service := services.GetNetworkCdnMarketplaceConfigurationMappingService(sess)
 	///pass the changed as well as unchanged parameters to update the resource.
-	update, err := service.UpdateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
-		Origin:     sl.String(originaddress),
-		VendorName: sl.String(vendorname),
-		Domain:     sl.String(domain),
-		Protocol:   sl.String(protocol),
-		HttpPort:   sl.Int(httpport),
-		OriginType: sl.String(origintype),
-		UniqueId:   sl.String(uniqueId),
-	})
-	///Print the response of the requested service.
-	log.Print("Response for cdn update: ")
-	log.Println(update)
-	if err != nil {
-		log.Println("error updating")
-		log.Println(err)
+
+	if origintype == "HOST_SERVER" && protocol == "HTTP_AND_HTTPS" {
+		update1, err := service.UpdateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
+			Origin:         sl.String(originaddress),
+			VendorName:     sl.String(vendorname),
+			Domain:         sl.String(domain),
+			Path:           sl.String(path),
+			Protocol:       sl.String(protocol),
+			Cname:          sl.String(cname),
+			HttpPort:       sl.Int(httpport),
+			HttpsPort:      sl.Int(httpsport),
+			OriginType:     sl.String(origintype),
+			RespectHeaders: sl.Bool(respectheaders),
+			Header:         sl.String(header),
+			UniqueId:       sl.String(uniqueId),
+		})
+		///Print the response of the requested service.
+		log.Print("Response for cdn update: ")
+		log.Println(update1)
+		if err != nil {
+			log.Println("error updating")
+			log.Println(err)
+		}
 	}
+
+	if origintype == "HOST_SERVER" && protocol == "HTTPS" {
+		update2, err := service.UpdateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
+			Origin:         sl.String(originaddress),
+			VendorName:     sl.String(vendorname),
+			Domain:         sl.String(domain),
+			Path:           sl.String(path),
+			Protocol:       sl.String(protocol),
+			Cname:          sl.String(cname),
+			HttpsPort:      sl.Int(httpsport),
+			OriginType:     sl.String(origintype),
+			RespectHeaders: sl.Bool(respectheaders),
+			Header:         sl.String(header),
+			UniqueId:       sl.String(uniqueId),
+		})
+		///Print the response of the requested service.
+		log.Print("Response for cdn update: ")
+		log.Println(update2)
+		if err != nil {
+			log.Println("error updating")
+			log.Println(err)
+		}
+
+	}
+
+	if origintype == "HOST_SERVER" && protocol == "HTTP" {
+		update3, err := service.UpdateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
+			Origin:         sl.String(originaddress),
+			VendorName:     sl.String(vendorname),
+			Domain:         sl.String(domain),
+			Path:           sl.String(path),
+			Protocol:       sl.String(protocol),
+			Cname:          sl.String(cname),
+			HttpPort:       sl.Int(httpport),
+			OriginType:     sl.String(origintype),
+			RespectHeaders: sl.Bool(respectheaders),
+			Header:         sl.String(header),
+			UniqueId:       sl.String(uniqueId),
+		})
+		///Print the response of the requested service.
+		log.Print("Response for cdn update: ")
+		log.Println(update3)
+		if err != nil {
+			log.Println("error updating")
+			log.Println(err)
+		}
+
+	}
+
+	if origintype == "OBJECT_STORAGE" && protocol == "HTTP_AND_HTTPS" {
+		update4, err := service.UpdateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
+			Origin:         sl.String(originaddress),
+			VendorName:     sl.String(vendorname),
+			Domain:         sl.String(domain),
+			Path:           sl.String(path),
+			Protocol:       sl.String(protocol),
+			Cname:          sl.String(cname),
+			HttpPort:       sl.Int(httpport),
+			HttpsPort:      sl.Int(httpsport),
+			OriginType:     sl.String(origintype),
+			RespectHeaders: sl.Bool(respectheaders),
+			BucketName:     sl.String(bucketname),
+			Header:         sl.String(header),
+			FileExtension:  sl.String(fileextension),
+			UniqueId:       sl.String(uniqueId),
+		})
+		///Print the response of the requested service.
+		log.Print("Response for cdn update: ")
+		log.Println(update4)
+		if err != nil {
+			log.Println("error updating")
+			log.Println(err)
+		}
+	}
+
+	if origintype == "OBJECT_STORAGE" && protocol == "HTTPS" {
+		update5, err := service.UpdateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
+			Origin:         sl.String(originaddress),
+			VendorName:     sl.String(vendorname),
+			Domain:         sl.String(domain),
+			Path:           sl.String(path),
+			Protocol:       sl.String(protocol),
+			Cname:          sl.String(cname),
+			HttpsPort:      sl.Int(httpsport),
+			OriginType:     sl.String(origintype),
+			RespectHeaders: sl.Bool(respectheaders),
+			BucketName:     sl.String(bucketname),
+			Header:         sl.String(header),
+			FileExtension:  sl.String(fileextension),
+			UniqueId:       sl.String(uniqueId),
+		})
+		///Print the response of the requested service.
+		log.Print("Response for cdn update: ")
+		log.Println(update5)
+		if err != nil {
+			log.Println("error updating")
+			log.Println(err)
+		}
+	}
+
+	if origintype == "OBJECT_STORAGE" && protocol == "HTTP" {
+		update6, err := service.UpdateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
+			Origin:         sl.String(originaddress),
+			VendorName:     sl.String(vendorname),
+			Domain:         sl.String(domain),
+			Path:           sl.String(path),
+			Protocol:       sl.String(protocol),
+			Cname:          sl.String(cname),
+			HttpPort:       sl.Int(httpport),
+			OriginType:     sl.String(origintype),
+			RespectHeaders: sl.Bool(respectheaders),
+			BucketName:     sl.String(bucketname),
+			Header:         sl.String(header),
+			FileExtension:  sl.String(fileextension),
+			UniqueId:       sl.String(uniqueId),
+		})
+		///Print the response of the requested service.
+		log.Print("Response for cdn update: ")
+		log.Println(update6)
+		if err != nil {
+			log.Println("error updating")
+			log.Println(err)
+		}
+	}
+
 	return nil
 }
 
