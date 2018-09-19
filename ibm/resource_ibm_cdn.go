@@ -12,6 +12,8 @@ import (
 	"github.com/softlayer/softlayer-go/services"
 )
 
+const str string = ".cdnedge.bluemix.net"
+
 func resourceIBMCDN() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceIBMCDNCreate,
@@ -78,6 +80,11 @@ func resourceIBMCDN() *schema.Resource {
 				Optional: true,
 				Default:  "",
 			},
+			"certificatetype": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "0",
+			},
 			"path": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
@@ -91,7 +98,6 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 	///create  session
 	sess := meta.(ClientSession).SoftLayerSession()
 	log.Println("ordering cdn service...")
-	str := ".cdnedge.bluemix.net"
 	///get the value of all the parameters
 	domain := d.Get("hostname").(string)
 	vendorname := d.Get("vendor_name").(string)
@@ -103,9 +109,9 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 	bucketname := d.Get("bucketname").(string)
 	path := d.Get("path").(string)
 	header := d.Get("header").(string)
-	fileextension := d.Get("fileextension").(string)
 	respectheaders := d.Get("respectheaders").(bool)
 	cname := d.Get("cname").(string)
+	certificateType := d.Get("certificatetype").(string)
 	if cname != "0" {
 		cname = cname + str
 	}
@@ -124,7 +130,6 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 			Cname:          sl.String(cname),
 			Protocol:       sl.String(protocol),
 			HttpPort:       sl.Int(httpport),
-			FileExtension:  sl.String(fileextension),
 			OriginType:     sl.String(origintype),
 			BucketName:     sl.String(bucketname),
 			Header:         sl.String(header),
@@ -137,21 +142,25 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 		log.Print("Response for cdn order")
 		log.Println(receipt1)
 		d.SetId(*receipt1[0].UniqueId)
+		id, err := strconv.Atoi((d.Id()))
+		result1, err := service.VerifyDomainMapping(&id)
+		log.Println(result1)
+
 	}
 	if origintype == "OBJECT_STORAGE" && protocol == "HTTPS" {
 		receipt2, err := service.CreateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
-			Origin:         sl.String(originaddress),
-			VendorName:     sl.String(vendorname),
-			Domain:         sl.String(domain),
-			Path:           sl.String(path),
-			Cname:          sl.String(cname),
-			Protocol:       sl.String(protocol),
-			HttpsPort:      sl.Int(httpsport),
-			FileExtension:  sl.String(fileextension),
-			OriginType:     sl.String(origintype),
-			BucketName:     sl.String(bucketname),
-			Header:         sl.String(header),
-			RespectHeaders: sl.Bool(respectheaders),
+			Origin:          sl.String(originaddress),
+			VendorName:      sl.String(vendorname),
+			Domain:          sl.String(domain),
+			Path:            sl.String(path),
+			Cname:           sl.String(cname),
+			Protocol:        sl.String(protocol),
+			HttpsPort:       sl.Int(httpsport),
+			OriginType:      sl.String(origintype),
+			BucketName:      sl.String(bucketname),
+			Header:          sl.String(header),
+			RespectHeaders:  sl.Bool(respectheaders),
+			CertificateType: sl.String(certificateType),
 		})
 		if err != nil {
 			return fmt.Errorf("Error creating CDN: %s", err)
@@ -160,22 +169,25 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 		log.Print("Response for cdn order")
 		log.Println(receipt2)
 		d.SetId(*receipt2[0].UniqueId)
+		id, err := strconv.Atoi((d.Id()))
+		result2, err := service.VerifyDomainMapping(&id)
+		log.Println(result2)
 	}
 	if origintype == "OBJECT_STORAGE" && protocol == "HTTP_AND_HTTPS" {
 		receipt3, err := service.CreateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
-			Origin:         sl.String(originaddress),
-			VendorName:     sl.String(vendorname),
-			Domain:         sl.String(domain),
-			Path:           sl.String(path),
-			Cname:          sl.String(cname),
-			Protocol:       sl.String(protocol),
-			HttpPort:       sl.Int(httpport),
-			HttpsPort:      sl.Int(httpsport),
-			FileExtension:  sl.String(fileextension),
-			OriginType:     sl.String(origintype),
-			BucketName:     sl.String(bucketname),
-			Header:         sl.String(header),
-			RespectHeaders: sl.Bool(respectheaders),
+			Origin:          sl.String(originaddress),
+			VendorName:      sl.String(vendorname),
+			Domain:          sl.String(domain),
+			Path:            sl.String(path),
+			Cname:           sl.String(cname),
+			Protocol:        sl.String(protocol),
+			HttpPort:        sl.Int(httpport),
+			HttpsPort:       sl.Int(httpsport),
+			OriginType:      sl.String(origintype),
+			BucketName:      sl.String(bucketname),
+			Header:          sl.String(header),
+			RespectHeaders:  sl.Bool(respectheaders),
+			CertificateType: sl.String(certificateType),
 		})
 		if err != nil {
 			return fmt.Errorf("Error creating CDN: %s", err)
@@ -184,6 +196,9 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 		log.Print("Response for cdn order")
 		log.Println(receipt3)
 		d.SetId(*receipt3[0].UniqueId)
+		id, err := strconv.Atoi((d.Id()))
+		result3, err := service.VerifyDomainMapping(&id)
+		log.Println(result3)
 	}
 	if origintype == "HOST_SERVER" && protocol == "HTTP" {
 		receipt4, err := service.CreateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
@@ -205,19 +220,23 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 		log.Print("Response for cdn order")
 		log.Println(receipt4)
 		d.SetId(*receipt4[0].UniqueId)
+		id, err := strconv.Atoi((d.Id()))
+		result4, err := service.VerifyDomainMapping(&id)
+		log.Println(result4)
 	}
 	if origintype == "HOST_SERVER" && protocol == "HTTPS" {
 		receipt5, err := service.CreateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
-			Origin:         sl.String(originaddress),
-			VendorName:     sl.String(vendorname),
-			Domain:         sl.String(domain),
-			Path:           sl.String(path),
-			Cname:          sl.String(cname),
-			Protocol:       sl.String(protocol),
-			HttpsPort:      sl.Int(httpsport),
-			OriginType:     sl.String(origintype),
-			Header:         sl.String(header),
-			RespectHeaders: sl.Bool(respectheaders),
+			Origin:          sl.String(originaddress),
+			VendorName:      sl.String(vendorname),
+			Domain:          sl.String(domain),
+			Path:            sl.String(path),
+			Cname:           sl.String(cname),
+			Protocol:        sl.String(protocol),
+			HttpsPort:       sl.Int(httpsport),
+			OriginType:      sl.String(origintype),
+			Header:          sl.String(header),
+			RespectHeaders:  sl.Bool(respectheaders),
+			CertificateType: sl.String(certificateType),
 		})
 		if err != nil {
 			return fmt.Errorf("Error creating CDN: %s", err)
@@ -226,20 +245,24 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 		log.Print("Response for cdn order")
 		log.Println(receipt5)
 		d.SetId(*receipt5[0].UniqueId)
+		id, err := strconv.Atoi((d.Id()))
+		result5, err := service.VerifyDomainMapping(&id)
+		log.Println(result5)
 	}
 	if origintype == "HOST_SERVER" && protocol == "HTTP_AND_HTTPS" {
 		receipt6, err := service.CreateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
-			Origin:         sl.String(originaddress),
-			VendorName:     sl.String(vendorname),
-			Domain:         sl.String(domain),
-			Path:           sl.String(path),
-			Cname:          sl.String(cname),
-			Protocol:       sl.String(protocol),
-			HttpPort:       sl.Int(httpport),
-			HttpsPort:      sl.Int(httpsport),
-			OriginType:     sl.String(origintype),
-			Header:         sl.String(header),
-			RespectHeaders: sl.Bool(respectheaders),
+			Origin:          sl.String(originaddress),
+			VendorName:      sl.String(vendorname),
+			Domain:          sl.String(domain),
+			Path:            sl.String(path),
+			Cname:           sl.String(cname),
+			Protocol:        sl.String(protocol),
+			HttpPort:        sl.Int(httpport),
+			HttpsPort:       sl.Int(httpsport),
+			OriginType:      sl.String(origintype),
+			Header:          sl.String(header),
+			RespectHeaders:  sl.Bool(respectheaders),
+			CertificateType: sl.String(certificateType),
 		})
 		if err != nil {
 			return fmt.Errorf("Error creating CDN: %s", err)
@@ -248,7 +271,11 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 		log.Print("Response for cdn order")
 		log.Println(receipt6)
 		d.SetId(*receipt6[0].UniqueId)
+		id, err := strconv.Atoi((d.Id()))
+		result6, err := service.VerifyDomainMapping(&id)
+		log.Println(result6)
 	}
+
 	return nil
 }
 
@@ -279,25 +306,176 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 	originaddress := d.Get("origin_address").(string)
 	protocol := d.Get("protocol").(string)
 	httpport := d.Get("httpport").(int)
+	httpsport := d.Get("httpsport").(int)
+	path := d.Get("path").(string)
+	cname := d.Get("cname").(string)
+	header := d.Get("header").(string)
+	bucketname := d.Get("bucketname").(string)
+	fileextension := d.Get("fileextension").(string)
+	respectheaders := d.Get("respectheaders").(bool)
+	certificateType := d.Get("certificatetype").(string)
 	uniqueId := d.Id()
+	if cname != "0" {
+		cname = cname + str
+	}
+	if cname == "0" {
+		cname = ""
+	}
 	service := services.GetNetworkCdnMarketplaceConfigurationMappingService(sess)
 	///pass the changed as well as unchanged parameters to update the resource.
-	update, err := service.UpdateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
-		Origin:     sl.String(originaddress),
-		VendorName: sl.String(vendorname),
-		Domain:     sl.String(domain),
-		Protocol:   sl.String(protocol),
-		HttpPort:   sl.Int(httpport),
-		OriginType: sl.String(origintype),
-		UniqueId:   sl.String(uniqueId),
-	})
-	///Print the response of the requested service.
-	log.Print("Response for cdn update: ")
-	log.Println(update)
-	if err != nil {
-		log.Println("error updating")
-		log.Println(err)
+
+	if origintype == "HOST_SERVER" && protocol == "HTTP_AND_HTTPS" {
+		update1, err := service.UpdateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
+			Origin:          sl.String(originaddress),
+			VendorName:      sl.String(vendorname),
+			Domain:          sl.String(domain),
+			Path:            sl.String(path),
+			Protocol:        sl.String(protocol),
+			Cname:           sl.String(cname),
+			HttpPort:        sl.Int(httpport),
+			HttpsPort:       sl.Int(httpsport),
+			OriginType:      sl.String(origintype),
+			RespectHeaders:  sl.Bool(respectheaders),
+			Header:          sl.String(header),
+			UniqueId:        sl.String(uniqueId),
+			CertificateType: sl.String(certificateType),
+		})
+		///Print the response of the requested service.
+		log.Print("Response for cdn update: ")
+		log.Println(update1)
+		if err != nil {
+			log.Println("error updating")
+			log.Println(err)
+		}
 	}
+
+	if origintype == "HOST_SERVER" && protocol == "HTTPS" {
+		update2, err := service.UpdateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
+			Origin:          sl.String(originaddress),
+			VendorName:      sl.String(vendorname),
+			Domain:          sl.String(domain),
+			Path:            sl.String(path),
+			Protocol:        sl.String(protocol),
+			Cname:           sl.String(cname),
+			HttpsPort:       sl.Int(httpsport),
+			OriginType:      sl.String(origintype),
+			RespectHeaders:  sl.Bool(respectheaders),
+			Header:          sl.String(header),
+			UniqueId:        sl.String(uniqueId),
+			CertificateType: sl.String(certificateType),
+		})
+		///Print the response of the requested service.
+		log.Print("Response for cdn update: ")
+		log.Println(update2)
+		if err != nil {
+			log.Println("error updating")
+			log.Println(err)
+		}
+
+	}
+
+	if origintype == "HOST_SERVER" && protocol == "HTTP" {
+		update3, err := service.UpdateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
+			Origin:         sl.String(originaddress),
+			VendorName:     sl.String(vendorname),
+			Domain:         sl.String(domain),
+			Path:           sl.String(path),
+			Protocol:       sl.String(protocol),
+			Cname:          sl.String(cname),
+			HttpPort:       sl.Int(httpport),
+			OriginType:     sl.String(origintype),
+			RespectHeaders: sl.Bool(respectheaders),
+			Header:         sl.String(header),
+			UniqueId:       sl.String(uniqueId),
+		})
+		///Print the response of the requested service.
+		log.Print("Response for cdn update: ")
+		log.Println(update3)
+		if err != nil {
+			log.Println("error updating")
+			log.Println(err)
+		}
+
+	}
+
+	if origintype == "OBJECT_STORAGE" && protocol == "HTTP_AND_HTTPS" {
+		update4, err := service.UpdateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
+			Origin:          sl.String(originaddress),
+			VendorName:      sl.String(vendorname),
+			Domain:          sl.String(domain),
+			Path:            sl.String(path),
+			Protocol:        sl.String(protocol),
+			Cname:           sl.String(cname),
+			HttpPort:        sl.Int(httpport),
+			HttpsPort:       sl.Int(httpsport),
+			OriginType:      sl.String(origintype),
+			RespectHeaders:  sl.Bool(respectheaders),
+			BucketName:      sl.String(bucketname),
+			Header:          sl.String(header),
+			FileExtension:   sl.String(fileextension),
+			UniqueId:        sl.String(uniqueId),
+			CertificateType: sl.String(certificateType),
+		})
+		///Print the response of the requested service.
+		log.Print("Response for cdn update: ")
+		log.Println(update4)
+		if err != nil {
+			log.Println("error updating")
+			log.Println(err)
+		}
+	}
+
+	if origintype == "OBJECT_STORAGE" && protocol == "HTTPS" {
+		update5, err := service.UpdateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
+			Origin:          sl.String(originaddress),
+			VendorName:      sl.String(vendorname),
+			Domain:          sl.String(domain),
+			Path:            sl.String(path),
+			Protocol:        sl.String(protocol),
+			Cname:           sl.String(cname),
+			HttpsPort:       sl.Int(httpsport),
+			OriginType:      sl.String(origintype),
+			RespectHeaders:  sl.Bool(respectheaders),
+			BucketName:      sl.String(bucketname),
+			Header:          sl.String(header),
+			FileExtension:   sl.String(fileextension),
+			UniqueId:        sl.String(uniqueId),
+			CertificateType: sl.String(certificateType),
+		})
+		///Print the response of the requested service.
+		log.Print("Response for cdn update: ")
+		log.Println(update5)
+		if err != nil {
+			log.Println("error updating")
+			log.Println(err)
+		}
+	}
+
+	if origintype == "OBJECT_STORAGE" && protocol == "HTTP" {
+		update6, err := service.UpdateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
+			Origin:         sl.String(originaddress),
+			VendorName:     sl.String(vendorname),
+			Domain:         sl.String(domain),
+			Path:           sl.String(path),
+			Protocol:       sl.String(protocol),
+			Cname:          sl.String(cname),
+			HttpPort:       sl.Int(httpport),
+			OriginType:     sl.String(origintype),
+			RespectHeaders: sl.Bool(respectheaders),
+			BucketName:     sl.String(bucketname),
+			Header:         sl.String(header),
+			FileExtension:  sl.String(fileextension),
+			UniqueId:       sl.String(uniqueId),
+		})
+		///Print the response of the requested service.
+		log.Print("Response for cdn update: ")
+		log.Println(update6)
+		if err != nil {
+			log.Println("error updating")
+			log.Println(err)
+		}
+	}
+
 	return nil
 }
 
