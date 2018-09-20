@@ -307,6 +307,7 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 	protocol := d.Get("protocol").(string)
 	httpport := d.Get("httpport").(int)
 	httpsport := d.Get("httpsport").(int)
+	path := d.Get("path").(string)
 	cname := d.Get("cname").(string)
 	header := d.Get("header").(string)
 	bucketname := d.Get("bucketname").(string)
@@ -328,6 +329,7 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 			Origin:          sl.String(originaddress),
 			VendorName:      sl.String(vendorname),
 			Domain:          sl.String(domain),
+			Path:            sl.String(path),
 			Protocol:        sl.String(protocol),
 			Cname:           sl.String(cname),
 			HttpPort:        sl.Int(httpport),
@@ -352,6 +354,7 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 			Origin:          sl.String(originaddress),
 			VendorName:      sl.String(vendorname),
 			Domain:          sl.String(domain),
+			Path:            sl.String(path),
 			Protocol:        sl.String(protocol),
 			Cname:           sl.String(cname),
 			HttpsPort:       sl.Int(httpsport),
@@ -376,6 +379,7 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 			Origin:         sl.String(originaddress),
 			VendorName:     sl.String(vendorname),
 			Domain:         sl.String(domain),
+			Path:           sl.String(path),
 			Protocol:       sl.String(protocol),
 			Cname:          sl.String(cname),
 			HttpPort:       sl.Int(httpport),
@@ -399,6 +403,7 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 			Origin:          sl.String(originaddress),
 			VendorName:      sl.String(vendorname),
 			Domain:          sl.String(domain),
+			Path:            sl.String(path),
 			Protocol:        sl.String(protocol),
 			Cname:           sl.String(cname),
 			HttpPort:        sl.Int(httpport),
@@ -425,6 +430,7 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 			Origin:          sl.String(originaddress),
 			VendorName:      sl.String(vendorname),
 			Domain:          sl.String(domain),
+			Path:            sl.String(path),
 			Protocol:        sl.String(protocol),
 			Cname:           sl.String(cname),
 			HttpsPort:       sl.Int(httpsport),
@@ -450,6 +456,7 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 			Origin:         sl.String(originaddress),
 			VendorName:     sl.String(vendorname),
 			Domain:         sl.String(domain),
+			Path:           sl.String(path),
 			Protocol:       sl.String(protocol),
 			Cname:          sl.String(cname),
 			HttpPort:       sl.Int(httpport),
