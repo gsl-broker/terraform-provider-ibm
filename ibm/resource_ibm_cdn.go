@@ -88,7 +88,7 @@ func resourceIBMCDN() *schema.Resource {
 			"path": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "",
+				Default:  "/",
 			},
 		},
 	}
