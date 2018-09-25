@@ -145,6 +145,7 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 		id, err := strconv.Atoi((d.Id()))
 		result1, err := service.VerifyDomainMapping(&id)
 		log.Println(result1)
+		return resourceIBMCDNRead(d, meta)
 
 	}
 	if origintype == "OBJECT_STORAGE" && protocol == "HTTPS" {
@@ -172,6 +173,7 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 		id, err := strconv.Atoi((d.Id()))
 		result2, err := service.VerifyDomainMapping(&id)
 		log.Println(result2)
+		return resourceIBMCDNRead(d, meta)
 	}
 	if origintype == "OBJECT_STORAGE" && protocol == "HTTP_AND_HTTPS" {
 		receipt3, err := service.CreateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
@@ -199,6 +201,7 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 		id, err := strconv.Atoi((d.Id()))
 		result3, err := service.VerifyDomainMapping(&id)
 		log.Println(result3)
+		return resourceIBMCDNRead(d, meta)
 	}
 	if origintype == "HOST_SERVER" && protocol == "HTTP" {
 		receipt4, err := service.CreateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
@@ -223,6 +226,7 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 		id, err := strconv.Atoi((d.Id()))
 		result4, err := service.VerifyDomainMapping(&id)
 		log.Println(result4)
+		return resourceIBMCDNRead(d, meta)
 	}
 	if origintype == "HOST_SERVER" && protocol == "HTTPS" {
 		receipt5, err := service.CreateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
@@ -248,6 +252,7 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 		id, err := strconv.Atoi((d.Id()))
 		result5, err := service.VerifyDomainMapping(&id)
 		log.Println(result5)
+		return resourceIBMCDNRead(d, meta)
 	}
 	if origintype == "HOST_SERVER" && protocol == "HTTP_AND_HTTPS" {
 		receipt6, err := service.CreateDomainMapping(&datatypes.Container_Network_CdnMarketplace_Configuration_Input{
@@ -274,6 +279,7 @@ func resourceIBMCDNCreate(d *schema.ResourceData, meta interface{}) error {
 		id, err := strconv.Atoi((d.Id()))
 		result6, err := service.VerifyDomainMapping(&id)
 		log.Println(result6)
+		return resourceIBMCDNRead(d, meta)
 	}
 
 	return nil
@@ -283,12 +289,20 @@ func resourceIBMCDNRead(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 	log.Println("reading cdn service...")
 	service := services.GetNetworkCdnMarketplaceConfigurationMappingService(sess)
-	cdnId, err := strconv.Atoi(d.Id())
+	cdnId := sl.String(d.Id())
 	///read the changes in the remote resource and update in the local resource.
-	read, err := service.VerifyDomainMapping(sl.Int(cdnId))
+	read, err := service.ListDomainMappingByUniqueId(cdnId)
 	///Print the response of the requested the service.
+	d.Set("id", *read[0].UniqueId)
+	d.Set("originaddress", *read[0].OriginHost)
+	d.Set("vendorname", *read[0].VendorName)
+	d.Set("domain", *read[0].Domain)
+	d.Set("header", *read[0].Header)
+	d.Set("cname", *read[0].Cname)
+	d.Set("origin_type", *read[0].OriginType)
+
 	log.Print("Response for cdn verification: ")
-	log.Println(read)
+
 	if err != nil {
 		log.Println("error Reading")
 		log.Println(err)
@@ -315,12 +329,6 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 	respectheaders := d.Get("respectheaders").(bool)
 	certificateType := d.Get("certificatetype").(string)
 	uniqueId := d.Id()
-	if cname != "0" {
-		cname = cname + str
-	}
-	if cname == "0" {
-		cname = ""
-	}
 	service := services.GetNetworkCdnMarketplaceConfigurationMappingService(sess)
 	///pass the changed as well as unchanged parameters to update the resource.
 
@@ -343,10 +351,12 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 		///Print the response of the requested service.
 		log.Print("Response for cdn update: ")
 		log.Println(update1)
+
 		if err != nil {
 			log.Println("error updating")
 			log.Println(err)
 		}
+		return resourceIBMCDNRead(d, meta)
 	}
 
 	if origintype == "HOST_SERVER" && protocol == "HTTPS" {
@@ -371,6 +381,7 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 			log.Println("error updating")
 			log.Println(err)
 		}
+		return resourceIBMCDNRead(d, meta)
 
 	}
 
@@ -395,6 +406,7 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 			log.Println("error updating")
 			log.Println(err)
 		}
+		return resourceIBMCDNRead(d, meta)
 
 	}
 
@@ -423,6 +435,7 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 			log.Println("error updating")
 			log.Println(err)
 		}
+		return resourceIBMCDNRead(d, meta)
 	}
 
 	if origintype == "OBJECT_STORAGE" && protocol == "HTTPS" {
@@ -449,6 +462,7 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 			log.Println("error updating")
 			log.Println(err)
 		}
+		return resourceIBMCDNRead(d, meta)
 	}
 
 	if origintype == "OBJECT_STORAGE" && protocol == "HTTP" {
@@ -474,6 +488,7 @@ func resourceIBMCDNUpdate(d *schema.ResourceData, meta interface{}) error {
 			log.Println("error updating")
 			log.Println(err)
 		}
+		return resourceIBMCDNRead(d, meta)
 	}
 
 	return nil
