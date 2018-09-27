@@ -60,6 +60,10 @@ func resourceIBMLb() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"name": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 			"subnet_id": {
 				Type:     schema.TypeInt,
 				Computed: true,
@@ -196,6 +200,7 @@ func resourceIBMLbCreate(d *schema.ResourceData, meta interface{}) error {
 	d.SetId(fmt.Sprintf("%d", *loadBalancer.Id))
 	d.Set("connections", getConnectionLimit(*loadBalancer.ConnectionLimit))
 	d.Set("datacenter", loadBalancer.LoadBalancerHardware[0].Datacenter.Name)
+	d.Set("name", loadBalancer.LoadBalancerHardware[0].Hostname)
 	d.Set("ip_address", loadBalancer.IpAddress.IpAddress)
 	d.Set("subnet_id", loadBalancer.IpAddress.SubnetId)
 	d.Set("ha_enabled", loadBalancer.HighAvailabilityFlag)
@@ -253,6 +258,7 @@ func resourceIBMLbRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("subnet_id", vip.IpAddress.SubnetId)
 	d.Set("ha_enabled", vip.HighAvailabilityFlag)
 	d.Set("dedicated", vip.DedicatedFlag)
+	d.Set("name", vip.LoadBalancerHardware[0].Hostname)
 	d.Set("ssl_enabled", vip.SslEnabledFlag)
 
 	// Optional fields.  Guard against nil pointer dereferences
