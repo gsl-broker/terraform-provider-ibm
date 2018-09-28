@@ -24,6 +24,7 @@ import (
 	"github.com/IBM-Cloud/bluemix-go/api/account/accountv2"
 	"github.com/IBM-Cloud/bluemix-go/api/container/containerv1"
 	"github.com/IBM-Cloud/bluemix-go/api/iampap/iampapv1"
+	"github.com/IBM-Cloud/bluemix-go/api/iamuum/iamuumv1"
 	"github.com/IBM-Cloud/bluemix-go/api/mccp/mccpv2"
 	"github.com/IBM-Cloud/bluemix-go/api/resource/resourcev1/catalog"
 	"github.com/IBM-Cloud/bluemix-go/api/resource/resourcev1/controller"
@@ -34,9 +35,6 @@ import (
 
 	bxsession "github.com/IBM-Cloud/bluemix-go/session"
 )
-
-//SoftlayerRestEndpoint rest endpoint of SoftLayer
-const SoftlayerRestEndpoint = "https://api.softlayer.com/rest/v3"
 
 //RetryDelay
 const RetryAPIDelay = 5 * time.Second
@@ -105,6 +103,7 @@ type ClientSession interface {
 	ContainerAPI() (containerv1.ContainerServiceAPI, error)
 	IAMAPI() (iamv1.IAMServiceAPI, error)
 	IAMPAPAPI() (iampapv1.IAMPAPAPI, error)
+	IAMUUMAPI() (iamuumv1.IAMUUMServiceAPI, error)
 	MccpAPI() (mccpv2.MccpServiceAPI, error)
 	BluemixAcccountAPI() (accountv2.AccountServiceAPI, error)
 	BluemixAcccountv1API() (accountv1.AccountServiceAPI, error)
@@ -126,6 +125,9 @@ type clientSession struct {
 
 	iamPAPConfigErr  error
 	iamPAPServiceAPI iampapv1.IAMPAPAPI
+
+	iamUUMConfigErr  error
+	iamUUMServiceAPI iamuumv1.IAMUUMServiceAPI
 
 	iamConfigErr  error
 	iamServiceAPI iamv1.IAMServiceAPI
@@ -179,7 +181,12 @@ func (sess clientSession) IAMAPI() (iamv1.IAMServiceAPI, error) {
 
 // IAMPAPAPI provides IAM PAP APIs ...
 func (sess clientSession) IAMPAPAPI() (iampapv1.IAMPAPAPI, error) {
-	return sess.iamPAPServiceAPI, sess.iamConfigErr
+	return sess.iamPAPServiceAPI, sess.iamPAPConfigErr
+}
+
+// IAMUUMAPI provides IAM UUM APIs ...
+func (sess clientSession) IAMUUMAPI() (iamuumv1.IAMUUMServiceAPI, error) {
+	return sess.iamUUMServiceAPI, sess.iamUUMConfigErr
 }
 
 // ContainerAPI provides Container Service APIs ...
@@ -236,6 +243,12 @@ func (c *Config) ClientSession() (interface{}, error) {
 		session.accountV1ConfigErr = errEmptyBluemixCredentials
 		session.iamConfigErr = errEmptyBluemixCredentials
 		session.functionConfigErr = errEmptyBluemixCredentials
+		session.iamPAPConfigErr = errEmptyBluemixCredentials
+		session.iamUUMConfigErr = errEmptyBluemixCredentials
+		session.resourceCatalogConfigErr = errEmptyBluemixCredentials
+		session.resourceManagementConfigErr = errEmptyBluemixCredentials
+		session.resourceCatalogConfigErr = errEmptyBluemixCredentials
+
 		return session, nil
 	}
 	err = authenticateAPIKey(sess.BluemixSession)
@@ -281,7 +294,7 @@ func (c *Config) ClientSession() (interface{}, error) {
 
 	iampap, err := iampapv1.New(sess.BluemixSession)
 	if err != nil {
-		session.iamConfigErr = fmt.Errorf("Error occured while configuring Bluemix IAMPAP Service: %q", err)
+		session.iamPAPConfigErr = fmt.Errorf("Error occured while configuring Bluemix IAMPAP Service: %q", err)
 	}
 	session.iamPAPServiceAPI = iampap
 
@@ -290,6 +303,12 @@ func (c *Config) ClientSession() (interface{}, error) {
 		session.iamConfigErr = fmt.Errorf("Error occured while configuring Bluemix IAM Service: %q", err)
 	}
 	session.iamServiceAPI = iam
+
+	iamuum, err := iamuumv1.New(sess.BluemixSession)
+	if err != nil {
+		session.iamUUMConfigErr = fmt.Errorf("Error occured while configuring Bluemix IAMUUM Service: %q", err)
+	}
+	session.iamUUMServiceAPI = iamuum
 
 	resourceCatalogAPI, err := catalog.New(sess.BluemixSession)
 	if err != nil {

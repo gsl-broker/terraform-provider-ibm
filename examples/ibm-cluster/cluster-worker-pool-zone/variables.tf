@@ -25,13 +25,23 @@ variable "service_key" {
 }
 
 variable "service_offering" {
-  default = "cloudantNoSQLDB"
+  default = "speech_to_text"
 }
 
 variable "plan" {
-  default = "Lite"
+  default = "lite"
 }
 
 variable "cluster_name" {
   default = "cluster"
 }
+
+variable "worker_pool_name" {
+  default = "worker_pool"
+}
+
+variable "zone" {}
+
+variable "zone_private_vlan_id" {}
+
+variable "zone_public_vlan_id" {}
