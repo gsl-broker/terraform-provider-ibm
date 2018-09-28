@@ -55,6 +55,10 @@ func resourceIBMCDN() *schema.Resource {
 				Optional: true,
 				Default:  80,
 			},
+			"status": &schema.Schema{
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 			"httpsport": &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -324,6 +328,7 @@ func resourceIBMCDNRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("header", *read[0].Header)
 	d.Set("cname", *read[0].Cname)
 	d.Set("origin_type", *read[0].OriginType)
+	d.Set("status", *read[0].Status)
 
 	log.Print("Response for cdn verification: ")
 
