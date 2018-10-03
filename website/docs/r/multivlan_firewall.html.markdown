@@ -35,7 +35,7 @@ The following arguments are supported:
 * `datacenter` - (Required, string) The data center in which the firewall appliance resides.
 * `pod` - (Required, string) The pod in which the firewall resides
 * `name` - (Required, string) The name of the firewall device
-* `firewall_type` - (Required, string) The type of the firwall device. Allowed values are:- FortiGate Security Appliance,FortiGate Firewall Appliance HA Option
+* `firewall_type` - (Required, string) The type of the firewall device. Allowed values are:- FortiGate Security Appliance,FortiGate Firewall Appliance HA Option
 * `addon_configuration` - (Required, list) The list of addons that are allowed. Allowed values:- ["FortiGate Security Appliance - Web Filtering Add-on (High Availability)","FortiGate Security Appliance - NGFW Add-on (High Availability)","FortiGate Security Appliance - AV Add-on (High Availability)"] or ["FortiGate Security Appliance - Web Filtering Add-on","FortiGate Security Appliance - NGFW Add-on","FortiGate Security Appliance - AV Add-on"]
 
 ## Attribute Reference

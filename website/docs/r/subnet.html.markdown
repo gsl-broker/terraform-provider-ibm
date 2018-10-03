@@ -29,7 +29,29 @@ resource "ibm_subnet" "portable_subnet" {
   capacity = 4
   vlan_id = 1234567
   notes = "portable_subnet"
+  //User can increase timeouts 
+  timeouts {
+    create = "45m"
+  }
 }
+```
+
+Users can use Terraform built-in functions to get IP addresses from `portable subnet`. The following example returns the first usable IP address of the portable subnet `test`.:
+
+```hcl
+resource "ibm_subnet" "test" {
+  type = "Portable"
+  private = true
+  ip_version = 4
+  capacity = 4
+  vlan_id = 1234567
+}
+
+# Use a built-in function cidrhost with index 1.
+output "first_ip_address" {
+  value = "${cidrhost(ibm_subnet.test.subnet_cidr,1)}"
+}
+
 ```
 
 ##### Example Usage of static subnet
@@ -46,7 +68,7 @@ resource "ibm_subnet" "static_subnet" {
 }
 ```
 
-Users can use Terraform built-in functions to get IP addresses from `subnet`. The following example returns the first IP address in the subnet `test`:
+Users can use Terraform built-in functions to get IP addresses from `subnet`. The following example returns the first usable IP address in the static subnet `test`:
 
 ```hcl
 resource "ibm_subnet" "test" {
@@ -59,10 +81,16 @@ resource "ibm_subnet" "test" {
 
 # Use a built-in function cidrhost with index 0.
 output "first_ip_address" {
-  value = "${cidrhost(ibm_subnet.test.subnet,0)}"
+  value = "${cidrhost(ibm_subnet.test.subnet_cidr,0)}"
 }
 
 ```
+
+## Timeouts
+
+ibm_subnet provides the following [Timeouts](https://www.terraform.io/docs/configuration/resources.html#timeouts) configuration options:
+
+* `create` - (Default 30 minutes) Used for Creating Instance.
 
 ##### Argument Reference
 

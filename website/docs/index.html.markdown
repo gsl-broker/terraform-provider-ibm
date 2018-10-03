@@ -51,8 +51,8 @@ data "ibm_space" "space" {
 resource "ibm_service_instance" "service" {
   name       = "${var.instance_name}"
   space_guid = "${data.ibm_space.space.id}"
-  service    = "cleardb"
-  plan       = "cb5"
+  service    = "speech_to_text"
+  plan       = "lite"
   tags       = ["cluster-service", "cluster-bind"]
 }
 
@@ -80,31 +80,30 @@ You can provide your static credentials by adding the `bluemix_api_key`, `softla
 
 Usage:
 
-```
+```hcl
 provider "ibm" {
     bluemix_api_key = ""
     softlayer_username = ""
     softlayer_api_key = ""
-
 }
 ```
 
 
 ### Environment variables
 
-You can provide your credentials by exporting the `BM_API_KEY`, `SL_USERNAME`, and `SL_API_KEY` environment variables, representing your IBM Cloud platform API key, IBM Cloud infrastructure (SoftLayer) user name, and IBM Cloud infrastructure API key, respectively.  
+You can provide your credentials by exporting the `BM_API_KEY`, `SL_USERNAME`, and `SL_API_KEY` environment variables, representing your IBM Cloud platform API key, IBM Cloud infrastructure (SoftLayer) user name, and IBM Cloud infrastructure API key, respectively.
 
-```
+```hcl
 provider "ibm" {}
 ```
 
 Usage:
 
-```
-$ export BM_API_KEY="bmx_api_key"
-$ export SL_USERNAME="sl_username"
-$ export SL_API_KEY="sl_api_key"
-$ terraform plan
+```shell
+export BM_API_KEY="bmx_api_key"
+export SL_USERNAME="sl_username"
+export SL_API_KEY="sl_api_key"
+terraform plan
 ```
 
 ## Argument Reference
@@ -118,6 +117,8 @@ The following arguments are supported in the `provider` block:
 * `softlayer_username` - (optional) The IBM Cloud infrastructure (SoftLayer) user name. You must either add it as a credential in the provider block or source it from the `SL_USERNAME` (higher precedence) or `SOFTLAYER_USERNAME` environment variable.
 
 * `softlayer_api_key` - (optional) The IBM Cloud infrastructure API key. You must either add it as a credential in the provider block or source it from the `SL_API_KEY` (higher precedence) or `SOFTLAYER_API_KEY` environment variable. The key is required to provision infrastructure resources, such as any resource that begins with `ibm_compute`.
+
+* `softlayer_endpoint_url` - (optional) The IBM Cloud infrastructure endpoint url. You can also source it from the `SL_ENDPOINT_URL` (higher precedence) or `SOFTLAYER_ENDPOINT_URL` environment variable. The default value is `https://api.softlayer.com/rest/v3`.
 
 * `softlayer_timeout` - (optional) The timeout, expressed in seconds, for the IBM Cloud infrastructure API key. You can also source the timeout from the `SL_TIMEOUT` (higher precedence) or `SOFTLAYER_TIMEOUT` environment variable. The default value is `60`.
 

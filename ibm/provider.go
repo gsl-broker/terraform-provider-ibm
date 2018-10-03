@@ -46,6 +46,12 @@ func Provider() terraform.ResourceProvider {
 				Description: "The SoftLayer user name",
 				DefaultFunc: schema.MultiEnvDefaultFunc([]string{"SL_USERNAME", "SOFTLAYER_USERNAME"}, ""),
 			},
+			"softlayer_endpoint_url": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "The Softlayer Endpoint",
+				DefaultFunc: schema.MultiEnvDefaultFunc([]string{"SL_ENDPOINT_URL", "SOFTLAYER_ENDPOINT_URL"}, "https://api.softlayer.com/rest/v3"),
+			},
 			"softlayer_timeout": {
 				Type:        schema.TypeInt,
 				Optional:    true,
@@ -93,6 +99,7 @@ func Provider() terraform.ResourceProvider {
 			"ibm_network_vlan":               dataSourceIBMNetworkVlan(),
 			"ibm_org":                        dataSourceIBMOrg(),
 			"ibm_org_quota":                  dataSourceIBMOrgQuota(),
+			"ibm_resource_quota":             dataSourceIBMResourceQuota(),
 			"ibm_resource_group":             dataSourceIBMResourceGroup(),
 			"ibm_resource_instance":          dataSourceIBMResourceInstance(),
 			"ibm_resource_key":               dataSourceIBMResourceKey(),
@@ -178,6 +185,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	bluemixAPIKey := d.Get("bluemix_api_key").(string)
 	softlayerUsername := d.Get("softlayer_username").(string)
 	softlayerAPIKey := d.Get("softlayer_api_key").(string)
+	softlayerEndpointUrl := d.Get("softlayer_endpoint_url").(string)
 	softlayerTimeout := d.Get("softlayer_timeout").(int)
 	bluemixTimeout := d.Get("bluemix_timeout").(int)
 	region := d.Get("region").(string)
@@ -201,7 +209,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		SoftLayerUserName:    softlayerUsername,
 		SoftLayerAPIKey:      softlayerAPIKey,
 		RetryCount:           retryCount,
-		SoftLayerEndpointURL: SoftlayerRestEndpoint,
+		SoftLayerEndpointURL: softlayerEndpointUrl,
 		RetryDelay:           RetryAPIDelay,
 		FunctionNameSpace:    wskNameSpace,
 	}
