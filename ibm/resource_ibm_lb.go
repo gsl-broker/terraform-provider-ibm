@@ -35,6 +35,9 @@ func resourceIBMLb() *schema.Resource {
 		Delete:   resourceIBMLbDelete,
 		Exists:   resourceIBMLbExists,
 		Importer: &schema.ResourceImporter{},
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(30 * time.Minute),
+		},
 
 		Schema: map[string]*schema.Schema{
 			"connections": {
@@ -84,6 +87,11 @@ func resourceIBMLb() *schema.Resource {
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Set:      schema.HashString,
+			},
+
+			"hostname": {
+				Type:     schema.TypeString,
+				Computed: true,
 			},
 		},
 	}
@@ -192,7 +200,7 @@ func resourceIBMLbCreate(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("Error during creation of load balancer: %s", err)
 	}
 
-	loadBalancer, err := findLoadBalancerByOrderId(sess, *receipt.OrderId, dedicated)
+	loadBalancer, err := findLoadBalancerByOrderId(sess, *receipt.OrderId, dedicated, d)
 	if err != nil {
 		return fmt.Errorf("Error during creation of load balancer: %s", err)
 	}
@@ -303,6 +311,7 @@ func resourceIBMLbRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("ssl_enabled", vip.SslEnabledFlag)
 	// Optional fields.  Guard against nil pointer dereferences
 	d.Set("security_certificate_id", sl.Get(vip.SecurityCertificateId, nil))
+	d.Set("hostname", vip.LoadBalancerHardware[0].Hostname)
 	return nil
 }
 
@@ -377,7 +386,7 @@ func getConnectionLimit(connectionLimit int) int {
 	}
 }
 
-func findLoadBalancerByOrderId(sess *session.Session, orderId int, dedicated bool) (datatypes.Network_Application_Delivery_Controller_LoadBalancer_VirtualIpAddress, error) {
+func findLoadBalancerByOrderId(sess *session.Session, orderId int, dedicated bool, d *schema.ResourceData) (datatypes.Network_Application_Delivery_Controller_LoadBalancer_VirtualIpAddress, error) {
 	var filterPath string
 	if dedicated {
 		filterPath = "adcLoadBalancers.dedicatedBillingItem.orderItem.order.id"
@@ -407,9 +416,10 @@ func findLoadBalancerByOrderId(sess *session.Session, orderId int, dedicated boo
 				return nil, "", fmt.Errorf("Expected one load balancer: %s", err)
 			}
 		},
-		Timeout:    10 * time.Minute,
-		Delay:      5 * time.Second,
-		MinTimeout: 3 * time.Second,
+		Timeout:        d.Timeout(schema.TimeoutCreate),
+		Delay:          5 * time.Second,
+		MinTimeout:     3 * time.Second,
+		NotFoundChecks: 24 * 60,
 	}
 
 	pendingResult, err := stateConf.WaitForState()

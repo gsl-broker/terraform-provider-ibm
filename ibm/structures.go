@@ -10,7 +10,9 @@ import (
 
 	"github.com/hashicorp/terraform/flatmap"
 
+	"github.com/IBM-Cloud/bluemix-go/api/account/accountv1"
 	"github.com/IBM-Cloud/bluemix-go/api/container/containerv1"
+	"github.com/IBM-Cloud/bluemix-go/api/iamuum/iamuumv1"
 	"github.com/IBM-Cloud/bluemix-go/api/mccp/mccpv2"
 	"github.com/apache/incubator-openwhisk-client-go/whisk"
 	"github.com/hashicorp/terraform/helper/schema"
@@ -698,11 +700,20 @@ func flattenDisks(result datatypes.Virtual_Guest) []int {
 		// skip 1,7 which is reserved for the swap disk and metadata
 		if result.BillingItem.OrderItem.Preset != nil {
 			if *v.Device != "1" && *v.Device != "7" && *v.Device != "0" {
-				out = append(out, *v.DiskImage.Capacity)
+				capacity, ok := sl.GrabOk(v, "DiskImage.Capacity")
+
+				if ok {
+					out = append(out, capacity.(int))
+				}
+
 			}
 		} else {
 			if *v.Device != "1" && *v.Device != "7" {
-				out = append(out, *v.DiskImage.Capacity)
+				capacity, ok := sl.GrabOk(v, "DiskImage.Capacity")
+
+				if ok {
+					out = append(out, capacity.(int))
+				}
 			}
 		}
 	}
@@ -717,11 +728,19 @@ func flattenDisksForWindows(result datatypes.Virtual_Guest) []int {
 		// skip 1,7 which is reserved for the swap disk and metadata
 		if result.BillingItem.OrderItem.Preset != nil {
 			if *v.Device != "1" && *v.Device != "7" && *v.Device != "0" && *v.Device != "3" {
-				out = append(out, *v.DiskImage.Capacity)
+				capacity, ok := sl.GrabOk(v, "DiskImage.Capacity")
+
+				if ok {
+					out = append(out, capacity.(int))
+				}
 			}
 		} else {
 			if *v.Device != "1" && *v.Device != "7" && *v.Device != "3" {
-				out = append(out, *v.DiskImage.Capacity)
+				capacity, ok := sl.GrabOk(v, "DiskImage.Capacity")
+
+				if ok {
+					out = append(out, capacity.(int))
+				}
 			}
 		}
 	}
@@ -791,4 +810,60 @@ func contains(s []int, e int) bool {
 		}
 	}
 	return false
+}
+
+func flattenAccessGroupMembers(list []models.AccessGroupMember, users []accountv1.AccountUser, serviceids []models.ServiceID) []map[string]interface{} {
+	result := make([]map[string]interface{}, 0, len(list))
+	for _, m := range list {
+		var value, vtype string
+		if m.Type == iamuumv1.AccessGroupMemberUser {
+			vtype = iamuumv1.AccessGroupMemberUser
+			for _, user := range users {
+				if user.IbmUniqueId == m.ID {
+					value = user.UserId
+					break
+				}
+			}
+		} else {
+
+			vtype = iamuumv1.AccessGroupMemberService
+			for _, srid := range serviceids {
+				if srid.IAMID == m.ID {
+					value = srid.UUID
+					break
+				}
+			}
+
+		}
+		l := map[string]interface{}{
+			"iam_id": value,
+			"type":   vtype,
+		}
+		result = append(result, l)
+	}
+	return result
+}
+
+func flattenUserIds(accountID string, users []string, meta interface{}) ([]string, error) {
+	userids := make([]string, len(users))
+	for i, name := range users {
+		user, err := getAccountUser(accountID, name, meta)
+		if err != nil {
+			return nil, err
+		}
+		userids[i] = user.IbmUniqueId
+	}
+	return userids, nil
+}
+
+func flattenServiceIds(services []string, meta interface{}) ([]string, error) {
+	serviceids := make([]string, len(services))
+	for i, id := range services {
+		serviceID, err := getServiceID(id, meta)
+		if err != nil {
+			return nil, err
+		}
+		serviceids[i] = serviceID.IAMID
+	}
+	return serviceids, nil
 }

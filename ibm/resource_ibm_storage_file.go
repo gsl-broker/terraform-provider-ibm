@@ -22,20 +22,16 @@ import (
 )
 
 const (
-	storagePerformancePackageType = "STORAGE_AS_A_SERVICE"
-	storageEndurancePackageType   = "STORAGE_AS_A_SERVICE"
-	storagePortablePackageType    = "ADDITIONAL_SERVICES_PORTABLE_STORAGE"
-	storageNasPackageType         = "ADDITIONAL_SERVICES_NETWORK_ATTACHED_STORAGE"
-	storageMask                   = "id,billingItem.orderItem.order.id"
-	storageDetailMask             = "id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress,properties[type]" +
+	storagePackageType = "STORAGE_AS_A_SERVICE"
+	storageMask        = "id,billingItem.orderItem.order.id"
+	storageDetailMask  = "id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress,properties[type]" +
 		",serviceResourceName,allowedIpAddresses[id,ipAddress,subnetId,allowedHost[name,credential[username,password]]],allowedSubnets[allowedHost[name,credential[username,password]]],allowedHardware[allowedHost[name,credential[username,password]]],allowedVirtualGuests[id,allowedHost[name,credential[username,password]]],snapshotCapacityGb,osType,notes,billingItem[hourlyFlag],serviceResource[datacenter[name]],schedules[dayOfWeek,hour,minute,retentionCount,type[keyname,name]]"
-	itemMask        = "id,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode],capacityRestrictionMinimum,capacityRestrictionMaximum,locationGroupId]"
+	itemMask        = "id,capacity,description,units,keyName,capacityMinimum,capacityMaximum,prices[id,categories[id,name,categoryCode],capacityRestrictionMinimum,capacityRestrictionMaximum,capacityRestrictionType,locationGroupId],itemCategory[categoryCode]"
 	enduranceType   = "Endurance"
 	performanceType = "Performance"
 	portableType    = "Portable"
-	nasType         = "NAS/FTP"
-	fileStorage     = "FILE_STORAGE"
-	blockStorage    = "BLOCK_STORAGE"
+	fileStorage     = "file"
+	blockStorage    = "block"
 	retryTime       = 5
 )
 
@@ -54,136 +50,6 @@ var (
 		2:    200,
 		4:    300,
 		10:   1000,
-	}
-
-	// Map IOPS value to endurance storage space keyName in SoftLayer_Product_Item
-	enduranceStorageMap = map[float64]string{
-		0.25: "STORAGE_SPACE_FOR_0_25_IOPS_PER_GB",
-		2:    "STORAGE_SPACE_FOR_2_IOPS_PER_GB",
-		4:    "STORAGE_SPACE_FOR_4_IOPS_PER_GB",
-		10:   "STORAGE_SPACE_FOR_10_IOPS_PER_GB",
-	}
-
-	performanceStorageMap = map[int]string{
-		20:    "20_39_GBS",
-		40:    "40_79_GBS",
-		80:    "80_99_GBS",
-		100:   "100_499_GBS",
-		250:   "100_499_GBS",
-		500:   "500_999_GBS",
-		1000:  "1000_1999_GBS",
-		2000:  "2000_2999_GBS",
-		3000:  "3000_3999_GBS",
-		4000:  "4000_7999_GBS",
-		5000:  "4000_7999_GBS",
-		6000:  "4000_7999_GBS",
-		7000:  "4000_7999_GBS",
-		8000:  "8000_9999_GBS",
-		9000:  "8000_9999_GBS",
-		10000: "10000_12000_GBS",
-		11000: "10000_12000_GBS",
-		12000: "10000_12000_GBS",
-	}
-
-	portablestorageMap = map[int]string{
-		10:   "GUEST_DISK_10_GB_SAN",
-		20:   "GUEST_DISK_20_GB_SAN",
-		25:   "GUEST_DISK_25_GB_SAN_4",
-		30:   "GUEST_DISK_30_GB_SAN",
-		40:   "GUEST_DISK_40_GB_SAN",
-		50:   "GUEST_DISK_50_GB_SAN",
-		75:   "GUEST_DISK_75_GB_SAN",
-		100:  "GUEST_DISK_100_GB_SAN_3",
-		125:  "GUEST_DISK_125_GB_SAN",
-		150:  "GUEST_DISK_150_GB_SAN",
-		175:  "GUEST_DISK_175_GB_SAN",
-		200:  "GUEST_DISK_200_GB_SAN",
-		250:  "GUEST_DISK_250_GB_SAN",
-		300:  "GUEST_DISK_300_GB_SAN",
-		350:  "GUEST_DISK_350_GB_SAN",
-		400:  "GUEST_DISK_400_GB_SAN",
-		500:  "GUEST_DISK_500_GB_SAN",
-		750:  "GUEST_DISK_750_GB_SAN_2",
-		1000: "GUEST_DISK_1000_GB_SAN_2",
-		1500: "GUEST_DISK_1500_GB_SAN",
-		2000: "GUEST_DISK_2000_GB_SAN",
-	}
-
-	// Map monthly storage value to performance IOPS keyName in SoftLayer_Product_Item
-	performanceMonthlyIopsMap = map[int]string{
-		20:    "100_1000_IOPS",
-		40:    "100_2000_IOPS",
-		80:    "100_4000_IOPS",
-		100:   "100_6000_IOPS",
-		250:   "100_6000_IOPS",
-		500:   "100_10000_IOPS",
-		1000:  "100_20000_IOPS",
-		2000:  "200_40000_IOPS",
-		3000:  "200_48000_IOPS",
-		4000:  "300_48000_IOPS",
-		5000:  "300_48000_IOPS",
-		6000:  "300_48000_IOPS",
-		7000:  "300_48000_IOPS",
-		8000:  "500_48000_IOPS",
-		9000:  "500_48000_IOPS",
-		10000: "1000_48000_IOPS",
-		11000: "1000_48000_IOPS",
-		12000: "1000_48000_IOPS",
-	}
-
-	// Map hourly storage value to performance IOPS keyName in SoftLayer_Product_Item
-	performanceHourlyIopsMap = map[int]string{
-		20:    "100_1000_IOPS",
-		40:    "100_2000_IOPS",
-		80:    "100_4000_IOPS",
-		100:   "100_6000_IOPS",
-		250:   "100_6000_IOPS",
-		500:   "100_10000_IOPS",
-		1000:  "100_20000_IOPS",
-		2000:  "200_40000_IOPS",
-		3000:  "200_48000_IOPS",
-		4000:  "300_48000_IOPS",
-		5000:  "300_48000_IOPS",
-		6000:  "300_48000_IOPS",
-		7000:  "300_48000_IOPS",
-		8000:  "500_48000_IOPS",
-		9000:  "500_48000_IOPS",
-		10000: "1000_48000_IOPS",
-		11000: "1000_48000_IOPS",
-		12000: "1000_48000_IOPS",
-	}
-
-	// storagePackageType is a storage package keyName for SoftLayer_Product_Package. It is used to filter storage package.
-	// iopsCategoryCode is a storage IOPS categoryCode for SoftLayer_Product_Item. It is used to filter storage IOPS price.
-	// storageProtocolCategoryCode is a storage protocol categoryCode for SoftLayer_Product_Item. It is used to filter storage protocol price.
-	storagePackageMap = map[string](map[string](map[string]string)){
-		fileStorage: {
-			performanceType: {
-				"storagePackageType":          storagePerformancePackageType,
-				"iopsCategoryCode":            "performance_storage_iops",
-				"storageProtocolCategoryCode": "storage_file",
-			},
-			enduranceType: {
-				"storagePackageType":          storageEndurancePackageType,
-				"iopsCategoryCode":            "storage_tier_level",
-				"storageProtocolCategoryCode": "storage_file",
-			},
-		},
-		blockStorage: {
-			performanceType: {
-				"storagePackageType":          storagePerformancePackageType,
-				"iopsCategoryCode":            "performance_storage_iops",
-				"storageProtocolCategoryCode": "storage_block",
-			},
-			enduranceType: {
-				"storagePackageType":          storageEndurancePackageType,
-				"iopsCategoryCode":            "storage_tier_level",
-				"storageProtocolCategoryCode": "storage_block",
-			},
-			portableType: {
-				"storagePackageType": storagePortablePackageType,
-			},
-		},
 	}
 
 	snapshotDay = map[string]string{
@@ -681,13 +547,7 @@ func buildStorageProductOrderContainer(
 	datacenter string,
 	hourlyBilling bool) (datatypes.Container_Product_Order, error) {
 
-	// Build product item filters for performance storage
-	capacityKeyName, err := getCapacityKeyName(iops, capacity, storageType)
-	if err != nil {
-		return datatypes.Container_Product_Order{}, err
-	}
 	// Get a package type)
-	storagePackageType := storagePackageMap[storageProtocol][storageType]["storagePackageType"]
 	pkg, err := product.GetPackageByType(sess, storagePackageType)
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
@@ -698,79 +558,76 @@ func buildStorageProductOrderContainer(
 		return datatypes.Container_Product_Order{}, err
 	}
 
-	var capacityPrice datatypes.Product_Item_Price
+	// Add IOPS price
 	targetItemPrices := []datatypes.Product_Item_Price{}
-	// Add capacity price
-	if storageType == enduranceType {
-		capacityPrice, err = getPrice(productItems, capacityKeyName, "performance_storage_space", "STORAGE_TIER_LEVEL", enduranceCapacityRestrictionMap[iops])
+
+	if storageType == "Performance" {
+		price, err := getPriceByCategory(productItems, "storage_as_a_service")
 		if err != nil {
 			return datatypes.Container_Product_Order{}, err
 		}
-	} else if storageType == performanceType {
-		capacityPrice, err = getPrice(productItems, capacityKeyName, "performance_storage_space", "", 0)
+		targetItemPrices = append(targetItemPrices, price)
+		price, err = getPriceByCategory(productItems, "storage_"+storageProtocol)
 		if err != nil {
 			return datatypes.Container_Product_Order{}, err
 		}
+		targetItemPrices = append(targetItemPrices, price)
+
+		price, err = getSaaSPerformSpacePrice(productItems, capacity)
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+		targetItemPrices = append(targetItemPrices, price)
+
+		price, err = getSaaSPerformIOPSPrice(productItems, capacity, int(iops))
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+		targetItemPrices = append(targetItemPrices, price)
+
 	} else {
-		capacityPrice, err = getPrice(productItems, capacityKeyName, "", "portablestorage", 0)
+
+		price, err := getPriceByCategory(productItems, "storage_as_a_service")
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+		targetItemPrices = append(targetItemPrices, price)
+		price, err = getPriceByCategory(productItems, "storage_"+storageProtocol)
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+		targetItemPrices = append(targetItemPrices, price)
+
+		price, err = getSaaSEnduranceSpacePrice(productItems, capacity, iops)
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+		targetItemPrices = append(targetItemPrices, price)
+
+		price, err = getSaaSEnduranceTierPrice(productItems, iops)
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+		targetItemPrices = append(targetItemPrices, price)
+
 	}
-	targetItemPrices = append(targetItemPrices, capacityPrice)
 
-	if storageType != portableType {
-		iopsKeyName, err := getIopsKeyName(iops, capacity, storageType, hourlyBilling)
+	if snapshotCapacity > 0 {
+		price, err := getSaaSSnapshotSpacePrice(productItems, snapshotCapacity, iops, storageType)
 		if err != nil {
 			return datatypes.Container_Product_Order{}, err
 		}
-		snapshotCapacityKeyName := fmt.Sprintf("%d_GB_", snapshotCapacity)
+		targetItemPrices = append(targetItemPrices, price)
 
-		iopsCategoryCode := storagePackageMap[storageProtocol][storageType]["iopsCategoryCode"]
-		storageProtocolCategoryCode := storagePackageMap[storageProtocol][storageType]["storageProtocolCategoryCode"]
-
-		// Add IOPS price
-		var iopsPrice datatypes.Product_Item_Price
-
-		if storageType == enduranceType {
-			iopsPrice, err = getPrice(productItems, iopsKeyName, iopsCategoryCode, "", 0)
-			if err != nil {
-				return datatypes.Container_Product_Order{}, err
-			}
-		} else {
-			iopsPrice, err = getPrice(productItems, iopsKeyName, iopsCategoryCode, "STORAGE_SPACE", capacity)
-			if err != nil {
-				return datatypes.Container_Product_Order{}, err
-			}
-		}
-
-		targetItemPrices = append(targetItemPrices, iopsPrice)
-
-		// Add storageProtocol price
-		storageProtocolPrice, err := getPrice(productItems, storageProtocol, storageProtocolCategoryCode, "", 0)
-		if err != nil {
-			return datatypes.Container_Product_Order{}, err
-		}
-		targetItemPrices = append(targetItemPrices, storageProtocolPrice)
-
-		endurancePrice, err := getPrice(productItems, "STORAGE_AS_A_SERVICE", "storage_as_a_service", "", 0)
-		if err != nil {
-			return datatypes.Container_Product_Order{}, err
-		}
-		targetItemPrices = append(targetItemPrices, endurancePrice)
-
-		// Add snapshot capacity price
-		if storageType == enduranceType && snapshotCapacity > 0 {
-			snapshotCapacityPrice, err := getPrice(productItems, snapshotCapacityKeyName, "storage_snapshot_space", "STORAGE_TIER_LEVEL", enduranceCapacityRestrictionMap[iops])
-			if err != nil {
-				return datatypes.Container_Product_Order{}, err
-			}
-			targetItemPrices = append(targetItemPrices, snapshotCapacityPrice)
-		}
 	}
+
 	// Lookup the data center ID
 	dc, err := location.GetDatacenterByName(sess, datacenter)
 	if err != nil {
 		return datatypes.Container_Product_Order{},
 			fmt.Errorf("No data centers matching %s could be found", datacenter)
 	}
+
 	productOrderContainer := datatypes.Container_Product_Order{
 		PackageId:        pkg.Id,
 		Location:         sl.String(strconv.Itoa(*dc.Id)),
@@ -881,7 +738,7 @@ func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}, storagety
 			}
 
 			// Check volume status.
-			if storageType != nasType || storagetype != portableType {
+			if storageType != portableType {
 				log.Println("Checking volume status.")
 				resultStr := ""
 				err = sess.DoRequest(
@@ -909,78 +766,6 @@ func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}, storagety
 	}
 
 	return stateConf.WaitForState()
-}
-
-func getIopsKeyName(iops float64, capacity int, storageType string, hourlyBilling bool) (string, error) {
-	switch storageType {
-	case enduranceType:
-		return enduranceIopsMap[iops], nil
-	case performanceType:
-		if hourlyBilling {
-			return performanceHourlyIopsMap[capacity], nil
-		}
-		return performanceMonthlyIopsMap[capacity], nil
-	}
-	return "", fmt.Errorf("Invalid storageType %s.", storageType)
-}
-
-func getCapacityKeyName(iops float64, capacity int, storageType string) (string, error) {
-	switch storageType {
-	case enduranceType:
-		return enduranceStorageMap[iops], nil
-	case performanceType:
-		return performanceStorageMap[capacity], nil
-	case portableType:
-		return portablestorageMap[capacity], nil
-	}
-	return "", fmt.Errorf("Invalid storageType %s.", storageType)
-}
-
-func getPrice(productItems []datatypes.Product_Item, keyName string, categoryCode string, capacityRestrictionType string, capacityRestriction int) (datatypes.Product_Item_Price, error) {
-	for _, item := range productItems {
-		if strings.HasPrefix(*item.KeyName, keyName) {
-			for _, price := range item.Prices {
-				if price.LocationGroupId == nil && capacityRestrictionType == "portablestorage" {
-					return price, nil
-				}
-				if *price.Categories[0].CategoryCode == categoryCode && price.LocationGroupId == nil {
-					if capacityRestrictionType == "STORAGE_SPACE" {
-						if price.CapacityRestrictionMinimum == nil ||
-							price.CapacityRestrictionMaximum == nil {
-							continue
-						}
-						capacityRestrictionMinimum, _ := strconv.Atoi(*price.CapacityRestrictionMinimum)
-						capacityRestrictionMaximum, _ := strconv.Atoi(*price.CapacityRestrictionMaximum)
-						if capacityRestrictionMinimum > 0 &&
-							capacityRestriction >= capacityRestrictionMinimum &&
-							capacityRestriction <= capacityRestrictionMaximum {
-							return price, nil
-						}
-					}
-
-					if capacityRestrictionType == "STORAGE_TIER_LEVEL" {
-						if price.CapacityRestrictionMinimum == nil ||
-							price.CapacityRestrictionMaximum == nil {
-							continue
-						}
-						capacityRestrictionMinimum, _ := strconv.Atoi(*price.CapacityRestrictionMinimum)
-						capacityRestrictionMaximum, _ := strconv.Atoi(*price.CapacityRestrictionMaximum)
-						if capacityRestrictionMinimum > 0 &&
-							capacityRestriction == capacityRestrictionMinimum &&
-							capacityRestriction == capacityRestrictionMaximum {
-							return price, nil
-						}
-					}
-
-					if capacityRestrictionType == "" && capacityRestriction == 0 {
-						return price, nil
-					}
-				}
-			}
-		}
-	}
-	return datatypes.Product_Item_Price{},
-		fmt.Errorf("No product items matching with keyName %s and categoryCode %s could be found", keyName, categoryCode)
 }
 
 func getIops(storage datatypes.Network_Storage, storageType string) (float64, error) {
@@ -1355,4 +1140,207 @@ func resourceIBMFilSnapshotHash(v interface{}) int {
 		m["retention_count"].(int)))
 
 	return hashcode.String(buf.String())
+}
+
+func getPrice(prices []datatypes.Product_Item_Price, category, restrictionType string, restrictionValue int) datatypes.Product_Item_Price {
+	for _, price := range prices {
+
+		if price.LocationGroupId != nil || *price.Categories[0].CategoryCode != category {
+			continue
+		}
+
+		if restrictionType != "" && restrictionValue > 0 {
+
+			capacityRestrictionMinimum, _ := strconv.Atoi(*price.CapacityRestrictionMinimum)
+			capacityRestrictionMaximum, _ := strconv.Atoi(*price.CapacityRestrictionMaximum)
+			if restrictionType != *price.CapacityRestrictionType || restrictionValue < capacityRestrictionMinimum || restrictionValue > capacityRestrictionMaximum {
+				continue
+			}
+
+		}
+
+		return price
+
+	}
+
+	return datatypes.Product_Item_Price{}
+
+}
+
+func getPriceByCategory(productItems []datatypes.Product_Item, priceCategory string) (datatypes.Product_Item_Price, error) {
+	for _, item := range productItems {
+		price := getPrice(item.Prices, priceCategory, "", 0)
+		if price.Id != nil {
+			return price, nil
+		}
+	}
+
+	return datatypes.Product_Item_Price{},
+		fmt.Errorf("No product items matching with category %s could be found", priceCategory)
+}
+
+func getSaaSPerformSpacePrice(productItems []datatypes.Product_Item, size int) (datatypes.Product_Item_Price, error) {
+
+	for _, item := range productItems {
+
+		category, ok := sl.GrabOk(item, "ItemCategory.CategoryCode")
+		if ok && category != "performance_storage_space" {
+			continue
+		}
+		if item.CapacityMinimum == nil || item.CapacityMaximum == nil {
+			continue
+		}
+
+		capacityMinimum, _ := strconv.Atoi(*item.CapacityMinimum)
+		capacityMaximum, _ := strconv.Atoi(*item.CapacityMaximum)
+
+		if size < capacityMinimum ||
+			size > capacityMaximum {
+			continue
+		}
+
+		keyname := fmt.Sprintf("%d_%d_GBS", capacityMinimum, capacityMaximum)
+		if *item.KeyName != keyname {
+			continue
+		}
+
+		price := getPrice(item.Prices, "performance_storage_space", "", 0)
+		if price.Id != nil {
+			return price, nil
+		}
+	}
+
+	return datatypes.Product_Item_Price{},
+		fmt.Errorf("Could not find price for performance storage space")
+
+}
+
+func getSaaSPerformIOPSPrice(productItems []datatypes.Product_Item, size, iops int) (datatypes.Product_Item_Price, error) {
+
+	for _, item := range productItems {
+
+		category, ok := sl.GrabOk(item, "ItemCategory.CategoryCode")
+		if ok && category != "performance_storage_iops" {
+			continue
+		}
+
+		if item.CapacityMinimum == nil || item.CapacityMaximum == nil {
+			continue
+		}
+
+		capacityMinimum, _ := strconv.Atoi(*item.CapacityMinimum)
+		capacityMaximum, _ := strconv.Atoi(*item.CapacityMaximum)
+
+		if iops < capacityMinimum ||
+			iops > capacityMaximum {
+			continue
+		}
+
+		price := getPrice(item.Prices, "performance_storage_iops", "STORAGE_SPACE", size)
+		if price.Id != nil {
+			return price, nil
+		}
+	}
+
+	return datatypes.Product_Item_Price{},
+		fmt.Errorf("Could not find price for iops for the given volume")
+
+}
+
+func getSaaSEnduranceSpacePrice(productItems []datatypes.Product_Item, size int, iops float64) (datatypes.Product_Item_Price, error) {
+
+	var keyName string
+	if iops != 0.25 {
+		tiers := int(iops)
+		keyName = fmt.Sprintf("STORAGE_SPACE_FOR_%d_IOPS_PER_GB", tiers)
+	} else {
+
+		keyName = "STORAGE_SPACE_FOR_0_25_IOPS_PER_GB"
+
+	}
+
+	for _, item := range productItems {
+
+		if *item.KeyName != keyName {
+			continue
+		}
+
+		if item.CapacityMinimum == nil || item.CapacityMaximum == nil {
+			continue
+		}
+
+		capacityMinimum, _ := strconv.Atoi(*item.CapacityMinimum)
+		capacityMaximum, _ := strconv.Atoi(*item.CapacityMaximum)
+
+		if size < capacityMinimum ||
+			size > capacityMaximum {
+			continue
+		}
+
+		price := getPrice(item.Prices, "performance_storage_space", "", 0)
+		if price.Id != nil {
+			return price, nil
+		}
+	}
+
+	return datatypes.Product_Item_Price{},
+		fmt.Errorf("Could not find price for endurance storage space")
+
+}
+
+func getSaaSEnduranceTierPrice(productItems []datatypes.Product_Item, iops float64) (datatypes.Product_Item_Price, error) {
+
+	targetCapacity := enduranceCapacityRestrictionMap[iops]
+
+	for _, item := range productItems {
+
+		category, ok := sl.GrabOk(item, "ItemCategory.CategoryCode")
+		if ok && category != "storage_tier_level" {
+			continue
+		}
+
+		if int(*item.Capacity) != targetCapacity {
+			continue
+		}
+
+		price := getPrice(item.Prices, "storage_tier_level", "", 0)
+		if price.Id != nil {
+			return price, nil
+		}
+	}
+
+	return datatypes.Product_Item_Price{},
+		fmt.Errorf("Could not find price for endurance tier level")
+
+}
+
+func getSaaSSnapshotSpacePrice(productItems []datatypes.Product_Item, size int, iops float64, volumeType string) (datatypes.Product_Item_Price, error) {
+
+	var targetValue int
+	var targetRestrictionType string
+	if volumeType == "Performance" {
+		targetValue = int(iops)
+		targetRestrictionType = "IOPS"
+	} else {
+
+		targetValue = enduranceCapacityRestrictionMap[iops]
+		targetRestrictionType = "STORAGE_TIER_LEVEL"
+
+	}
+
+	for _, item := range productItems {
+
+		if int(*item.Capacity) != size {
+			continue
+		}
+
+		price := getPrice(item.Prices, "storage_snapshot_space", targetRestrictionType, targetValue)
+		if price.Id != nil {
+			return price, nil
+		}
+	}
+
+	return datatypes.Product_Item_Price{},
+		fmt.Errorf("Could not find price for snapshot space")
+
 }

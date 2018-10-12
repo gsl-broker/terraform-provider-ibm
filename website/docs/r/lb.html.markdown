@@ -16,12 +16,24 @@ In the following example, you can create a local load balancer:
 
 ```hcl
 resource "ibm_lb" "test_lb_local" {
-    connections = 1500
-    datacenter  = "tok02"
-    ha_enabled  = false
-    dedicated   = false       
+  connections = 1500
+  datacenter  = "tok02"
+  ha_enabled  = false
+  dedicated   = false
+
+  //User can increase timeouts
+  timeouts {
+    create = "45m"
+  }
 }
 ```
+
+## Timeouts
+
+ibm_subnet provides the following [Timeouts](https://www.terraform.io/docs/configuration/resources.html#timeouts) configuration options:
+
+* `create` - (Default 30 minutes) Used for Creating Instance.
+
 
 ## Argument Reference
 
@@ -40,6 +52,7 @@ The following arguments are supported:
 The following attributes are exported:
 
 * `id` - The unique identifier of the local load balancer.
+* `hostname` - The host name of the local load balancer.
 * `ip_address` - The IP address of the local load balancer.
 * `subnet_id` - The unique identifier of the subnet associated with the local load balancer.
 * `ssl_enabled` - The status of whether the local load balancer provides SSL capability.
