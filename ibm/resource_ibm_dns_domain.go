@@ -68,6 +68,10 @@ func resourceIBMDNSDomain() *schema.Resource {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
+			"contact": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 		},
 	}
 }
@@ -166,6 +170,7 @@ func resourceIBMDNSDomainRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("retry", *soa.Retry)
 	d.Set("expire", *soa.Expire)
 	d.Set("minimum", *soa.Minimum)
+	d.Set("contact", *soa.ResponsiblePerson)
 	// find a record with host @; that will have the current target.
 	for _, record := range dns_domain.ResourceRecords {
 		if *record.Type == "a" && *record.Host == "@" {
