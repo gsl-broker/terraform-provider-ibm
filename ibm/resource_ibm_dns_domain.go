@@ -79,7 +79,8 @@ func resourceIBMDNSDomain() *schema.Resource {
 func resourceIBMDNSDomainCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 	service := services.GetDnsDomainService(sess.SetRetries(0))
-
+	name := (d.Get("name").(string))
+	mxname := "mail." + name
 	// prepare creation parameters
 	opts := datatypes.Dns_Domain{
 		Name: sl.String(d.Get("name").(string)),
@@ -120,7 +121,7 @@ func resourceIBMDNSDomainCreate(d *schema.ResourceData, meta interface{}) error 
 				Type: sl.String("a"),
 			},
 			{
-				Data:       sl.String("mail.check.records.com."),
+				Data:       sl.String(mxname),
 				Host:       sl.String("@"),
 				Ttl:        sl.Int(86400),
 				Type:       sl.String("mx"),
