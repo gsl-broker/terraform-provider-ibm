@@ -14,7 +14,7 @@ import (
 )
 
 var allowedDomainRecordTypes = []string{
-	"a", "aaaa", "cname", "mx", "ptr", "spf", "srv", "txt",
+	"a", "aaaa", "cname", "mx", "ns", "ptr", "soa", "spf", "srv", "txt",
 }
 var ipv6Regexp *regexp.Regexp
 var upcaseRegexp *regexp.Regexp
@@ -68,7 +68,7 @@ func resourceIBMDNSRecord() *schema.Resource {
 
 			"host": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 
 			"mx_priority": {
@@ -177,11 +177,12 @@ func resourceIBMDNSRecordCreate(d *schema.ResourceData, meta interface{}) error 
 	opts := datatypes.Dns_Domain_ResourceRecord{
 		Data:     sl.String(d.Get("data").(string)),
 		DomainId: sl.Int(d.Get("domain_id").(int)),
-		Host:     sl.String(d.Get("host").(string)),
 		Ttl:      sl.Int(d.Get("ttl").(int)),
 		Type:     sl.String(d.Get("type").(string)),
 	}
-
+	if host, ok := d.GetOk("host"); ok {
+		opts.Host = sl.String(host.(string))
+	}
 	if expire, ok := d.GetOk("expire"); ok {
 		opts.Expire = sl.Int(expire.(int))
 	}
@@ -274,7 +275,7 @@ func resourceIBMDNSRecordRead(d *schema.ResourceData, meta interface{}) error {
 	// Required fields
 	d.Set("data", *result.Data)
 	d.Set("domain_id", *result.DomainId)
-	d.Set("host", *result.Host)
+	d.Set("host", sl.Get(result.Host, nil))
 	d.Set("type", *result.Type)
 	d.Set("ttl", *result.Ttl)
 
