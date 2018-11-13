@@ -174,13 +174,20 @@ func resourceIBMDNSRecordCreate(d *schema.ResourceData, meta interface{}) error 
 	sess := meta.(ClientSession).SoftLayerSession()
 	service := services.GetDnsDomainResourceRecordService(sess.SetRetries(0))
 
+	typee := d.Get("type").(string)
 	opts := datatypes.Dns_Domain_ResourceRecord{
 		Data:     sl.String(d.Get("data").(string)),
 		DomainId: sl.Int(d.Get("domain_id").(int)),
 		Ttl:      sl.Int(d.Get("ttl").(int)),
 		Type:     sl.String(d.Get("type").(string)),
 	}
-	if host, ok := d.GetOk("host"); ok {
+	if typee != "srv" {
+		if host, ok := d.GetOk("host"); ok {
+			opts.Host = sl.String(host.(string))
+		} else {
+			return fmt.Errorf("A host value is required")
+		}
+	} else if host, ok := d.GetOk("host"); ok {
 		opts.Host = sl.String(host.(string))
 	}
 	if expire, ok := d.GetOk("expire"); ok {
