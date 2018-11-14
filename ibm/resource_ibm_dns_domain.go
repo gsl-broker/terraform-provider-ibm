@@ -68,6 +68,10 @@ func resourceIBMDNSDomain() *schema.Resource {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
+			"contact": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 		},
 	}
 }
@@ -75,7 +79,8 @@ func resourceIBMDNSDomain() *schema.Resource {
 func resourceIBMDNSDomainCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 	service := services.GetDnsDomainService(sess.SetRetries(0))
-
+	name := (d.Get("name").(string))
+	mxname := "mail." + name
 	// prepare creation parameters
 	opts := datatypes.Dns_Domain{
 		Name: sl.String(d.Get("name").(string)),
@@ -116,7 +121,7 @@ func resourceIBMDNSDomainCreate(d *schema.ResourceData, meta interface{}) error 
 				Type: sl.String("a"),
 			},
 			{
-				Data:       sl.String("mail.check.records.com."),
+				Data:       sl.String(mxname),
 				Host:       sl.String("@"),
 				Ttl:        sl.Int(86400),
 				Type:       sl.String("mx"),
@@ -166,6 +171,7 @@ func resourceIBMDNSDomainRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("retry", *soa.Retry)
 	d.Set("expire", *soa.Expire)
 	d.Set("minimum", *soa.Minimum)
+	d.Set("contact", *soa.ResponsiblePerson)
 	// find a record with host @; that will have the current target.
 	for _, record := range dns_domain.ResourceRecords {
 		if *record.Type == "a" && *record.Host == "@" {
