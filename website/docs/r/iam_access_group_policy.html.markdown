@@ -15,7 +15,7 @@ Provides a resource for IAM Access Group Policy. This allows access group policy
 ### Access Group Policy for All Identity and Access enabled services 
 
 ```hcl
-resource "iam_access_group" "accgrp" {
+resource "ibm_iam_access_group" "accgrp" {
   name = "test"
 }
 
@@ -29,7 +29,7 @@ resource "ibm_iam_access_group_policy" "policy" {
 ### Access Group Policy using service with region
 
 ```hcl
-resource "iam_access_group" "accgrp" {
+resource "ibm_iam_access_group" "accgrp" {
   name = "test"
 }
 
@@ -46,7 +46,7 @@ resource "ibm_iam_access_group_policy" "policy" {
 ### Access Group Policy using resource instance 
 
 ```hcl
-resource "iam_access_group" "accgrp" {
+resource "ibm_iam_access_group" "accgrp" {
   name = "test"
 }
 
@@ -73,7 +73,7 @@ resource "ibm_iam_access_group_policy" "policy" {
 ### Access Group Policy using resource group 
 
 ```hcl
-resource "iam_access_group" "accgrp" {
+resource "ibm_iam_access_group" "accgrp" {
   name = "test"
 }
 
@@ -96,7 +96,7 @@ resource "ibm_iam_access_group_policy" "policy" {
 ### Access Group Policy using resource and resource type 
 
 ```hcl
-resource "iam_access_group" "accgrp" {
+resource "ibm_iam_access_group" "accgrp" {
   name = "test"
 }
 
@@ -124,7 +124,7 @@ The following arguments are supported:
 * `roles` - (Required, list) comma separated list of roles. Valid roles are Writer, Reader, Manager, Administrator, Operator, Viewer, Editor.
 * `resources` - (Optional, list) A nested block describing the resource of this policy.
 Nested `resources` blocks have the following structure:
-  * `service` - (Optional, string) Service name of the policy definition.  You can retrieve the value by running the `bx catalog service-marketplace` or `bx catalog search` command in the [IBM Cloud CLI](https://console.bluemix.net/docs/cli/reference/bluemix_cli/get_started.html#getting-started).
+  * `service` - (Optional, string) Service name of the policy definition.  You can retrieve the value by running the `ibmcloud catalog service-marketplace` or `ibmcloud catalog search` command in the [IBM Cloud CLI](https://console.bluemix.net/docs/cli/reference/bluemix_cli/get_started.html#getting-started).
   * `resource_instance_id` - (Optional, string) ID of resource instance of the policy definition.
   * `region` - (Optional, string) Region of the policy definition.
   * `resource_type` - (Optional, string) Resource type of the policy definition.
@@ -148,4 +148,3 @@ ibm_iam_access_group_policy can be imported using access group ID and access gro
 ```
 $ terraform import ibm_iam_access_group_policy.example AccessGroupId-1148204e-6ef2-4ce1-9fd2-05e82a390fcf/bf5d6807-371e-4755-a282-64ebf575b80a
 ```
-

@@ -73,6 +73,7 @@ func TestAccIBMDNSRecord_Types(t *testing.T) {
 					testAccCheckIBMDNSRecordExists("ibm_dns_record.recordA", &dns_domain_record),
 					testAccCheckIBMDNSRecordExists("ibm_dns_record.recordAAAA", &dns_domain_record),
 					testAccCheckIBMDNSRecordExists("ibm_dns_record.recordCNAME", &dns_domain_record),
+					testAccCheckIBMDNSRecordExists("ibm_dns_record.recordNS", &dns_domain_record),
 					testAccCheckIBMDNSRecordExists("ibm_dns_record.recordMX", &dns_domain_record),
 					testAccCheckIBMDNSRecordExists("ibm_dns_record.recordSPF", &dns_domain_record),
 					testAccCheckIBMDNSRecordExists("ibm_dns_record.recordTXT", &dns_domain_record),
@@ -282,6 +283,15 @@ resource "ibm_dns_record" "recordCNAME" {
     responsible_person = "user@softlayer.com"
     ttl = 900
     type = "cname"
+}
+
+resource "ibm_dns_record" "recordNS" {
+    data = "ns1.example.com."
+    domain_id = "${ibm_dns_domain.test_dns_domain_record_types.id}"
+    host = "hosta-ns.com"
+    responsible_person = "user@softlayer.com"
+    ttl = 900
+    type = "ns"
 }
 
 resource "ibm_dns_record" "recordMX" {

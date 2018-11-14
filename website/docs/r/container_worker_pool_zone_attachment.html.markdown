@@ -15,9 +15,23 @@ Create, update, or delete a zone. This resource creates the zone and attaches it
 In the following example, you can create a zone:
 
 ```hcl
+resource "ibm_container_worker_pool" "test_pool" {
+  worker_pool_name = "my_pool"
+  machine_type     = "u2c.2x4"
+  cluster          = "my_cluster"
+  size_per_zone    = 2
+  hardware         = "shared"
+  disk_encryption  = "true"
+  region = "eu-de"
+  labels = {
+    "test" = "test-pool"
+
+    "test1" = "test-pool1"
+  }
+}
 resource "ibm_container_worker_pool_zone_attachment" "test_zone" {
   cluster         = "my_cluster"
-  worker_pool     = "my_cluster_pool"
+  worker_pool     = "${element(split("/",ibm_container_worker_pool.test_pool.id),1)}"
   zone            = "dal12"
   private_vlan_id = "2320267"
   public_vlan_id  = "2320265"
@@ -45,11 +59,12 @@ ibm_container_worker_pool_zone_attachment provides the following [Timeouts](http
 
 The following arguments are supported:
 
-* `zone` - (Required, string) The name of the zone. To list available zones, run 'bx cs zones'
+* `zone` - (Required, string) The name of the zone. To list available zones, run `ibmcloud cs zones`
 * `cluster` - (Required, string) The name or id of the cluster.
 * `worker_pool` - (Required, string) The name or id of the worker pool.
-* `private_vlan_id` - (Required, string) The private VLAN of the worker node. You can retrieve the value by running the `bx cs vlans <data-center>` command in the IBM Cloud CLI.
-* `public_vlan_id` - (Optional, string) The public VLAN of the worker node. You can retrieve the value by running the `bx cs vlans <data-center>` command in the IBM Cloud CLI..
+* `private_vlan_id` - (Optional, string) The private VLAN of the worker node. You can retrieve the value by running the `ibmcloud cs vlans <zone>` command in the IBM Cloud CLI. 
+* `public_vlan_id` - (Optional, string) The public VLAN of the worker node. The public vlan id cannot be specified alone, it should be specified along with the private vlan id. You can retrieve the value by running the `ibmcloud cs vlans <zone>` command in the IBM Cloud CLI. 
+**Note**: If you do not have a private or public VLAN in that zone, do not specify `private_vlan_id` and `public_vlan_id`. A private and a public VLAN are automatically created for you when you initially add a new zone to your worker pool.
 * `region` - (Optional, string) The region where the cluster is provisioned. If the region is not specified it will be defaulted to provider region(BM_REGION/BLUEMIX_REGION). To get the list of supported regions please access this [link](https://containers.bluemix.net/v1/regions) and use the alias.
 * `resource_group_id` - (Optional, string) The ID of the resource group.  You can retrieve the value from data source `ibm_resource_group`. If not provided defaults to default resource group.
 
