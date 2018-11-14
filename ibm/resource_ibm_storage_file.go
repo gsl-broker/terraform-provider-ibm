@@ -29,7 +29,6 @@ const (
 	itemMask        = "id,capacity,description,units,keyName,capacityMinimum,capacityMaximum,prices[id,categories[id,name,categoryCode],capacityRestrictionMinimum,capacityRestrictionMaximum,capacityRestrictionType,locationGroupId],itemCategory[categoryCode]"
 	enduranceType   = "Endurance"
 	performanceType = "Performance"
-	portableType    = "Portable"
 	fileStorage     = "file"
 	blockStorage    = "block"
 	retryTime       = 5
@@ -263,7 +262,7 @@ func resourceIBMStorageFileCreate(d *schema.ResourceData, meta interface{}) erro
 	}
 
 	// Find the storage device
-	fileStorage, _, err := findStorageByOrderId(sess, *receipt.OrderId, "")
+	fileStorage, err := findStorageByOrderId(sess, *receipt.OrderId)
 
 	if err != nil {
 		return fmt.Errorf("Error during creation of storage: %s", err)
@@ -271,7 +270,7 @@ func resourceIBMStorageFileCreate(d *schema.ResourceData, meta interface{}) erro
 	d.SetId(fmt.Sprintf("%d", *fileStorage.Id))
 
 	// Wait for storage availability
-	_, err = WaitForStorageAvailable(d, meta, "")
+	_, err = WaitForStorageAvailable(d, meta)
 
 	if err != nil {
 		return fmt.Errorf(
@@ -279,7 +278,7 @@ func resourceIBMStorageFileCreate(d *schema.ResourceData, meta interface{}) erro
 	}
 
 	// SoftLayer changes the device ID after completion of provisioning. It is necessary to refresh device ID.
-	fileStorage, _, err = findStorageByOrderId(sess, *receipt.OrderId, "")
+	fileStorage, err = findStorageByOrderId(sess, *receipt.OrderId)
 
 	if err != nil {
 		return fmt.Errorf("Error during creation of storage: %s", err)
@@ -479,20 +478,10 @@ func resourceIBMStorageFileUpdate(d *schema.ResourceData, meta interface{}) erro
 func resourceIBMStorageFileDelete(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 	storageService := services.GetNetworkStorageService(sess)
-	var billingItem datatypes.Billing_Item
-	var err error
 	storageID, _ := strconv.Atoi(d.Id())
-	if d.Get("type") == portableType {
-		billingItems, err := services.GetVirtualDiskImageService(sess).Id(storageID).GetBillingItem()
-		billingItem = billingItems.Billing_Item
-		if err != nil {
-			return fmt.Errorf("Error while looking up billing item associated with the storage: No billing item for ID:%d", storageID)
-		}
 
-	} else {
-		// Get billing item associated with the storage
-		billingItem, err = storageService.Id(storageID).GetBillingItem()
-	}
+	// Get billing item associated with the storage
+	billingItem, err := storageService.Id(storageID).GetBillingItem()
 
 	if err != nil {
 		return fmt.Errorf("Error while looking up billing item associated with the storage: %s", err)
@@ -520,13 +509,10 @@ func resourceIBMStorageFileExists(d *schema.ResourceData, meta interface{}) (boo
 	if err != nil {
 		return false, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
-	if d.Get("type") == portableType {
-		_, err = services.GetVirtualDiskImageService(sess).Id(storageID).GetObject()
-	} else {
-		_, err = services.GetNetworkStorageService(sess).
-			Id(storageID).
-			GetObject()
-	}
+
+	_, err = services.GetNetworkStorageService(sess).
+		Id(storageID).
+		GetObject()
 
 	if err != nil {
 		if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
@@ -552,6 +538,7 @@ func buildStorageProductOrderContainer(
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
+
 	// Get all prices
 	productItems, err := product.GetPackageProducts(sess, *pkg.Id, itemMask)
 	if err != nil {
@@ -639,46 +626,30 @@ func buildStorageProductOrderContainer(
 	return productOrderContainer, nil
 }
 
-func findStorageByOrderId(sess *session.Session, orderId int, storagetype string) (datatypes.Network_Storage, datatypes.Virtual_Disk_Image, error) {
+func findStorageByOrderId(sess *session.Session, orderId int) (datatypes.Network_Storage, error) {
 	filterPath := "networkStorage.billingItem.orderItem.order.id"
-	portablestoragefilter := "portableStorageVolumes.billingItem.orderItem.order.id"
-	var storage []datatypes.Network_Storage
-	var portablestorage []datatypes.Virtual_Disk_Image
-	var err error
+
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"pending"},
 		Target:  []string{"complete"},
 		Refresh: func() (interface{}, string, error) {
-			if storagetype != portableType {
-				storage, err = services.GetAccountService(sess).
-					Filter(filter.Build(
-						filter.Path(filterPath).
-							Eq(strconv.Itoa(orderId)))).
-					Mask(storageMask).
-					GetNetworkStorage()
-				if err != nil {
-					return datatypes.Network_Storage{}, "", err
-				}
-			} else {
-				portablestorage, err = services.GetAccountService(sess).
-					Filter(filter.Build(
-						filter.Path(portablestoragefilter).
-							Eq(strconv.Itoa(orderId)))).
-					Mask(storageMask).
-					GetPortableStorageVolumes()
-				if err != nil {
-					return datatypes.Network_Storage{}, "", err
-				}
+			storage, err := services.GetAccountService(sess).
+				Filter(filter.Build(
+					filter.Path(filterPath).
+						Eq(strconv.Itoa(orderId)))).
+				Mask(storageMask).
+				GetNetworkStorage()
+			if err != nil {
+				return datatypes.Network_Storage{}, "", err
 			}
+
 			if len(storage) == 1 {
 				return storage[0], "complete", nil
-			} else if len(portablestorage) == 1 {
-				fmt.Println("----------------------------Finally Found it-------------------------")
-				return portablestorage[0], "complete", nil
-			} else if len(storage) == 0 || len(portablestorage) == 0 {
+			} else if len(storage) == 0 {
 				return nil, "pending", nil
+			} else {
+				return nil, "", fmt.Errorf("Expected one Storage: %s", err)
 			}
-			return nil, "", fmt.Errorf("Expected one Storage: %s", err)
 		},
 		Timeout:        45 * time.Minute,
 		Delay:          10 * time.Second,
@@ -689,35 +660,27 @@ func findStorageByOrderId(sess *session.Session, orderId int, storagetype string
 	pendingResult, err := stateConf.WaitForState()
 
 	if err != nil {
-		return datatypes.Network_Storage{}, datatypes.Virtual_Disk_Image{}, err
+		return datatypes.Network_Storage{}, err
 	}
 
 	var result, ok = pendingResult.(datatypes.Network_Storage)
-	if storagetype == portableType {
-		if result, ok := pendingResult.(datatypes.Virtual_Disk_Image); ok {
-			return datatypes.Network_Storage{}, result, nil
-		}
-		return datatypes.Network_Storage{}, datatypes.Virtual_Disk_Image{},
-			fmt.Errorf("Cannot find Storage with order id from line 856 '%d'", orderId)
-	}
 
 	if ok {
-		return result, datatypes.Virtual_Disk_Image{}, nil
+		return result, nil
 	}
 
-	return datatypes.Network_Storage{}, datatypes.Virtual_Disk_Image{},
+	return datatypes.Network_Storage{},
 		fmt.Errorf("Cannot find Storage with order id '%d'", orderId)
 }
 
 // Waits for storage provisioning
-func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}, storagetype string) (interface{}, error) {
+func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}) (interface{}, error) {
 	log.Printf("Waiting for storage (%s) to be available.", d.Id())
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
 		return nil, fmt.Errorf("The storage ID %s must be numeric", d.Id())
 	}
 	sess := meta.(ClientSession).SoftLayerSession()
-	storageType := d.Get("type").(string)
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"retry", "provisioning"},
 		Target:  []string{"available"},
@@ -738,24 +701,22 @@ func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}, storagety
 			}
 
 			// Check volume status.
-			if storageType != portableType {
-				log.Println("Checking volume status.")
-				resultStr := ""
-				err = sess.DoRequest(
-					"SoftLayer_Network_Storage",
-					"getObject",
-					nil,
-					&sl.Options{Id: &id, Mask: "volumeStatus"},
-					&resultStr,
-				)
-				if err != nil {
-					return false, "retry", nil
-				}
+			log.Println("Checking volume status.")
+			resultStr := ""
+			err = sess.DoRequest(
+				"SoftLayer_Network_Storage",
+				"getObject",
+				nil,
+				&sl.Options{Id: &id, Mask: "volumeStatus"},
+				&resultStr,
+			)
+			if err != nil {
+				return false, "retry", nil
+			}
 
-				if !strings.Contains(resultStr, "PROVISION_COMPLETED") &&
-					!strings.Contains(resultStr, "Volume Provisioning has completed") {
-					return result, "provisioning", nil
-				}
+			if !strings.Contains(resultStr, "PROVISION_COMPLETED") &&
+				!strings.Contains(resultStr, "Volume Provisioning has completed") {
+				return result, "provisioning", nil
 			}
 
 			return result, "available", nil
