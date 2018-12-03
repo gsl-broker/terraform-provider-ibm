@@ -34,6 +34,12 @@ func Provider() terraform.ResourceProvider {
 				Description: "The Bluemix Region (for example 'us-south').",
 				DefaultFunc: schema.MultiEnvDefaultFunc([]string{"BM_REGION", "BLUEMIX_REGION"}, "us-south"),
 			},
+			"resource_group": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "The Resource group id.",
+				DefaultFunc: schema.MultiEnvDefaultFunc([]string{"BM_RESOURCE_GROUP", "BLUEMIX_RESOURCE_GROUP"}, ""),
+			},
 			"softlayer_api_key": {
 				Type:        schema.TypeString,
 				Optional:    true,
@@ -84,12 +90,14 @@ func Provider() terraform.ResourceProvider {
 			"ibm_function_trigger":           dataSourceIBMFunctionTrigger(),
 			"ibm_compute_bare_metal":         dataSourceIBMComputeBareMetal(),
 			"ibm_compute_image_template":     dataSourceIBMComputeImageTemplate(),
+			"ibm_compute_placement_group":    dataSourceIBMComputePlacementGroup(),
 			"ibm_compute_ssh_key":            dataSourceIBMComputeSSHKey(),
 			"ibm_compute_vm_instance":        dataSourceIBMComputeVmInstance(),
 			"ibm_container_cluster":          dataSourceIBMContainerCluster(),
 			"ibm_container_cluster_config":   dataSourceIBMContainerClusterConfig(),
 			"ibm_container_cluster_versions": dataSourceIBMContainerClusterVersions(),
 			"ibm_container_cluster_worker":   dataSourceIBMContainerClusterWorker(),
+			"ibm_dns_domain_registration":    dataSourceIBMDNSDomainRegistration(),
 			"ibm_dns_domain":                 dataSourceIBMDNSDomain(),
 			"ibm_dns_secondary":              dataSourceIBMDNSSecondary(),
 			"ibm_iam_user_policy":            dataSourceIBMIAMUserPolicy(),
@@ -188,6 +196,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	softlayerEndpointUrl := d.Get("softlayer_endpoint_url").(string)
 	softlayerTimeout := d.Get("softlayer_timeout").(int)
 	bluemixTimeout := d.Get("bluemix_timeout").(int)
+	resourceGrp := d.Get("resource_group").(string)
 	region := d.Get("region").(string)
 	retryCount := d.Get("max_retries").(int)
 	wskNameSpace := d.Get("function_namespace").(string)
@@ -204,6 +213,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	config := Config{
 		BluemixAPIKey:        bluemixAPIKey,
 		Region:               region,
+		ResourceGroup:        resourceGrp,
 		BluemixTimeout:       time.Duration(bluemixTimeout) * time.Second,
 		SoftLayerTimeout:     time.Duration(softlayerTimeout) * time.Second,
 		SoftLayerUserName:    softlayerUsername,

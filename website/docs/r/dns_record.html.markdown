@@ -12,7 +12,7 @@ Provides a single-resource record entry in `ibm_dns_domain`. Each resource recor
 
 The IBM Cloud Infrastructure (SoftLayer) object  [SoftLayer_Dns_Domain_ResourceRecord](https://sldn.softlayer.com/reference/datatypes/SoftLayer_Dns_Domain_ResourceRecord) is used for most CRUD operations. The IBM Cloud Infrastructure (SoftLayer) object [SoftLayer_Dns_Domain_ResourceRecord_SrvType](https://sldn.softlayer.com/reference/services/SoftLayer_Dns_Domain_ResourceRecord_SrvType) is used for SRV record types.
 
-You cannot create SOA or NS record types because these are automatically created by IBM Cloud Infrastructure (SoftLayer) when the domain is created.
+The SOA and NS records are automatically created by IBM Cloud Infrastructure (SoftLayer) when the domain is created, you don't need to create those manually.
 
 ## Example Usage
 
@@ -65,6 +65,21 @@ resource "ibm_dns_record" "cname" {
 }
 ```
 
+### `NS` Record
+
+Review the [IBM Cloud Infrastructure (SoftLayer) docs](http://sldn.softlayer.com/reference/datatypes/SoftLayer_Dns_Domain_ResourceRecord_NsType) to properly implement the `NS` record.
+
+```hcl
+resource "ibm_dns_record" "recordNS" {
+    data = "ns.example.com."
+    domain_id = "${ibm_dns_domain.main.id}"
+    host = "example.com"
+    responsible_person = "user@softlayer.com"
+    ttl = 900
+    type = "ns"
+}
+```
+
 ### `MX` Record
 
 Review the [IBM Cloud Infrastructure (SoftLayer) docs](http://sldn.softlayer.com/reference/datatypes/SoftLayer_Dns_Domain_ResourceRecord_MxType) to properly implement the `MX` record.
@@ -78,6 +93,21 @@ resource "sibm_dns_record" "recordMX-1" {
     responsible_person = "user@softlayer.com"
     ttl = 900
     type = "mx"
+}
+```
+
+### `SOA` Record
+
+Review the [IBM Cloud Infrastructure (SoftLayer) docs](http://sldn.softlayer.com/reference/datatypes/SoftLayer_Dns_Domain_ResourceRecord_SoaType) to properly implement the `SOA` record.
+
+```hcl
+resource "ibm_dns_record" "recordSOA" {
+    data = "ns1.example.com. abuse.example.com. 2018101002 7200 600 1728000 43200"
+    domain_id = "${ibm_dns_domain.main.id}"
+    host = "example.com"
+    responsible_person = "user@softlayer.com"
+    ttl = 900
+    type = "soa"
 }
 ```
 
@@ -175,7 +205,7 @@ The following arguments are supported:
 * `port` - (`SRV` records only, required, integer) The TCP or UDP port on which the service will be found.
 * `priority` - (`SRV` records only, required, integer) The priority of the target host. The lowest numerical value is given the highest priority. The default value is `0`.
 * `weight` - (`SRV` records only, required, integer) A relative weight for records that have the same priority. The default value is `0`.
-* `tags` - (Optional, array of strings) Tags associated with the DNS domain record instance.
+* `tags` - (Optional, array of strings) Tags associated with the DNS domain record instance.  
   **NOTE**: `Tags` are managed locally and not stored on the IBM Cloud service endpoint at this moment.
 
 ## Attribute Reference

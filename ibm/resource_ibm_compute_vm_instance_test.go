@@ -658,6 +658,110 @@ func TestAccIBMComputeVmInstance_With_Security_Groups(t *testing.T) {
 	})
 }
 
+func TestAccIBMComputeVmInstance_With_Evault(t *testing.T) {
+	var guest datatypes.Virtual_Guest
+
+	hostname := acctest.RandString(16)
+	domain := "tfvmevaultuat.ibm.com"
+
+	configInstance := "ibm_compute_vm_instance.terraform-evault"
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccIBMComputeVmInstanceDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config:  testComputeInstanceWithEvault(hostname, domain),
+				Destroy: false,
+				Check: resource.ComposeTestCheckFunc(
+					testAccIBMComputeVmInstanceExists(configInstance, &guest),
+					resource.TestCheckResourceAttr(
+						configInstance, "hostname", hostname),
+					resource.TestCheckResourceAttr(
+						configInstance, "domain", domain),
+					resource.TestCheckResourceAttr(
+						configInstance, "evault", "20"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccIBMComputeVmInstance_With_Retry(t *testing.T) {
+	var guest datatypes.Virtual_Guest
+
+	hostname := acctest.RandString(16)
+	domain := "tfvmretry.ibm.com"
+
+	configInstance := "ibm_compute_vm_instance.terraform-retry"
+	resource.Test(t, resource.TestCase{
+		PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config:  testComputeInstanceWithRetry(hostname, domain),
+				Destroy: false,
+				Check: resource.ComposeTestCheckFunc(
+					testAccIBMComputeVmInstanceExists(configInstance, &guest),
+					resource.TestCheckResourceAttr(
+						configInstance, "hostname", hostname),
+					resource.TestCheckResourceAttr(
+						configInstance, "domain", domain),
+					resource.TestCheckResourceAttr(
+						configInstance, "datacenter", "dal06"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccIBMComputeVmInstance_With_Placement_group(t *testing.T) {
+	var guest datatypes.Virtual_Guest
+
+	hostname := acctest.RandString(16)
+	domain := "tfvmpguat.ibm.com"
+
+	configInstance := "ibm_compute_vm_instance.terraform-pgroup"
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccIBMComputeVmInstanceDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config:  testComputeInstanceWithPlacementGroup(hostname, domain),
+				Destroy: false,
+				Check: resource.ComposeTestCheckFunc(
+					testAccIBMComputeVmInstanceExists(configInstance, &guest),
+					resource.TestCheckResourceAttr(
+						configInstance, "hostname", hostname),
+					resource.TestCheckResourceAttr(
+						configInstance, "domain", domain),
+					resource.TestCheckResourceAttr(
+						configInstance, "datacenter", "dal05"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccIBMComputeVmInstance_With_Invalid_Retry(t *testing.T) {
+
+	hostname := acctest.RandString(16)
+	domain := "tfvmretry.ibm.com"
+	var errMsg = "\"test\" Invalid values are provided in `datacenter_choice`"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config:      testComputeInstanceWithRetryInvalid(hostname, domain),
+				ExpectError: regexp.MustCompile(errMsg),
+			},
+		},
+	})
+}
+
 func testAccIBMComputeVmInstanceDestroy(s *terraform.State) error {
 	service := services.GetVirtualGuestService(testAccProvider.Meta().(ClientSession).SoftLayerSession())
 
@@ -1166,4 +1270,131 @@ func testAccIBMComputeVMInstanceConfigFlavorUpdate(hostname, domain, networkSpee
 	    secondary_ip_count = 4
 	    notes = "VM notes"
 	}`, hostname, domain, networkSpeed, flavor, userMetadata, tags)
+}
+
+func testComputeInstanceWithEvault(hostname, domain string) (config string) {
+	return fmt.Sprintf(`
+resource "ibm_compute_vm_instance" "terraform-evault" {
+	hostname = "%s"
+	domain = "%s"
+	datacenter = "mel01"
+	network_speed = 10
+	hourly_billing = false
+	cores = 1
+	memory = 1024
+	local_disk = false
+	os_reference_code = "DEBIAN_8_64"
+	disks = [25]
+	evault = 20
+}
+`, hostname, domain)
+}
+
+func testComputeInstanceWithRetry(hostname, domain string) (config string) {
+	return fmt.Sprintf(`
+	resource "ibm_compute_vm_instance" "terraform-retry" {
+		hostname          = "%s"
+		domain            = "%s"
+		network_speed     = 100
+		hourly_billing    = true
+		cores             = 1
+		memory            = 1024
+		local_disk        = false
+		os_reference_code = "DEBIAN_7_64"
+		disks             = [25]
+	  
+		datacenter_choice = [
+		  {
+			datacenter      = "dal09"
+			public_vlan_id  = 123245
+			private_vlan_id = 123255
+		  },
+		  {
+			datacenter = "wdc54"
+		  },
+		  {
+			datacenter      = "dal09"
+			public_vlan_id  = 153345
+			private_vlan_id = 123255
+		  },
+		  {
+			datacenter = "dal06"
+		  },
+		  {
+			datacenter      = "dal09"
+			public_vlan_id  = 123245
+			private_vlan_id = 123255
+		  },
+		  {
+			datacenter      = "dal09"
+			public_vlan_id  = 1232454
+			private_vlan_id = 1234567
+		  },
+		]
+	  }		
+`, hostname, domain)
+}
+
+func testComputeInstanceWithRetryInvalid(hostname, domain string) (config string) {
+	return fmt.Sprintf(`
+	resource "ibm_compute_vm_instance" "terraform-retry" {
+		hostname          = "%s"
+		domain            = "%s"
+		network_speed     = 100
+		hourly_billing    = true
+		cores             = 1
+		memory            = 1024
+		local_disk        = false
+		os_reference_code = "DEBIAN_7_64"
+		disks             = [25]
+	  
+		datacenter_choice = [
+		  {
+			datacenter      = "dal09"
+			public_vlan_id  = 123245
+			private_vlan_id = 123255
+		  },
+		  {
+			datacenter = "wdc54"
+		  },
+		  {
+			datacenter      = "dal09"
+			public_vlan_id  = 153345
+			private_vlan_id = 123255
+			test = "key"
+		  },
+		  {
+			datacenter = "dal06"
+		  },
+		  {
+			datacenter      = "dal09"
+			public_vlan_id  = 123245
+			private_vlan_id = 123255
+		  },
+		  {
+			datacenter      = "dal09"
+			public_vlan_id  = 1232454
+			private_vlan_id = 1234567
+		  },
+		]
+	  }		
+`, hostname, domain)
+}
+
+func testComputeInstanceWithPlacementGroup(hostname, domain string) (config string) {
+	return fmt.Sprintf(`
+resource "ibm_compute_vm_instance" "terraform-pgroup" {
+	hostname = "%s"
+	domain = "%s"
+	network_speed = 10
+	hourly_billing = true
+	datacenter = "dal05"
+	cores = 1
+	memory = 1024
+	local_disk = false
+	os_reference_code = "DEBIAN_8_64"
+	disks = [25]
+	placement_group_name = "%s"
+}
+`, hostname, domain, placementGroupName)
 }
