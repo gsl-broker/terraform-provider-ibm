@@ -40,6 +40,8 @@ func TestAccIBMContainerCluster_basic(t *testing.T) {
 						"ibm_container_cluster.testacc_cluster", "hardware", "shared"),
 					resource.TestCheckResourceAttr(
 						"ibm_container_cluster.testacc_cluster", "worker_pools.#", "1"),
+					resource.TestCheckResourceAttrSet(
+						"ibm_container_cluster.testacc_cluster", "resource_group_id"),
 				),
 			},
 			{
@@ -54,11 +56,15 @@ func TestAccIBMContainerCluster_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"ibm_container_cluster.testacc_cluster", "kube_version", kubeUpdateVersion),
 					resource.TestCheckResourceAttr(
+						"ibm_container_cluster.testacc_cluster", "workers_info.0.version", kubeUpdateVersion),
+					resource.TestCheckResourceAttr(
 						"ibm_container_cluster.testacc_cluster", "is_trusted", "false"),
 					resource.TestCheckResourceAttr(
 						"ibm_container_cluster.testacc_cluster", "hardware", "shared"),
 					resource.TestCheckResourceAttr(
 						"ibm_container_cluster.testacc_cluster", "worker_pools.#", "1"),
+					resource.TestCheckResourceAttrSet(
+						"ibm_container_cluster.testacc_cluster", "resource_group_id"),
 				),
 			},
 		},
@@ -382,6 +388,10 @@ data "ibm_account" "acc" {
    org_guid = "${data.ibm_org.org.id}"
 }
 
+data "ibm_resource_group" "testacc_ds_resource_group" {
+	is_default = "true"
+}
+
 resource "ibm_container_cluster" "testacc_cluster" {
   name       = "%s"
   datacenter = "%s"
@@ -391,6 +401,7 @@ resource "ibm_container_cluster" "testacc_cluster" {
 	account_guid = "${data.ibm_account.acc.id}"
 
   worker_num = 1
+  resource_group_id = "${data.ibm_resource_group.testacc_ds_resource_group.id}"
   
   default_pool_size = 1
   
@@ -567,6 +578,10 @@ data "ibm_account" "acc" {
    org_guid = "${data.ibm_org.org.id}"
 }
 
+data "ibm_resource_group" "testacc_ds_resource_group" {
+	is_default = "true"
+}
+
 resource "ibm_container_cluster" "testacc_cluster" {
   name       = "%s"
   datacenter = "%s"
@@ -580,11 +595,13 @@ resource "ibm_container_cluster" "testacc_cluster" {
   default_pool_size = 2
 
   hardware = "shared"
+  resource_group_id = "${data.ibm_resource_group.testacc_ds_resource_group.id}"
   kube_version    = "%s"
   machine_type    = "%s"
   public_vlan_id  = "%s"
   private_vlan_id = "%s"
   no_subnet		  = true
+  update_all_workers = true
   region = "%s"
 }	`, cfOrganization, cfOrganization, cfSpace, clusterName, datacenter, kubeUpdateVersion, machineType, publicVlanID, privateVlanID, csRegion)
 }

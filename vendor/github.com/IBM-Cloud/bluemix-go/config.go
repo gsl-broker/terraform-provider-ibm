@@ -18,6 +18,8 @@ const (
 	AccountServicev1 ServiceName = ServiceName("accountv1")
 	//MccpService ...
 	MccpService ServiceName = ServiceName("mccp")
+	//CisService ...
+	CisService ServiceName = ServiceName("cis")
 	//ContainerService ...
 	ContainerService ServiceName = ServiceName("container")
 	//UAAService ...
@@ -34,6 +36,8 @@ const (
 	ResourceControllerService ServiceName = ServiceName("resource-controller")
 	//resourceCatalogervice
 	ResourceCatalogrService ServiceName = ServiceName("resource-catalog ")
+	//RegistryService ...
+	ContainerRegistryService ServiceName = ServiceName("container-registry")
 )
 
 //Config ...
@@ -51,6 +55,8 @@ type Config struct {
 
 	//Region is optional. If region is not provided then endpoint must be provided
 	Region string
+	//ResourceGroupID
+	ResourceGroup string
 	//Endpoint is optional. If endpoint is not provided then endpoint must be obtained from region via EndpointLocator
 	Endpoint *string
 	//TokenProviderEndpoint is optional. If endpoint is not provided then endpoint must be obtained from region via EndpointLocator

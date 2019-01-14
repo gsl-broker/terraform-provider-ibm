@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -16,27 +17,37 @@ import (
 
 //ClusterInfo ...
 type ClusterInfo struct {
-	CreatedDate       string  `json:"createdDate"`
-	DataCenter        string  `json:"dataCenter"`
-	ID                string  `json:"id"`
-	IngressHostname   string  `json:"ingressHostname"`
-	IngressSecretName string  `json:"ingressSecretName"`
-	Location          string  `json:"location"`
-	MasterKubeVersion string  `json:"masterKubeVersion"`
-	ModifiedDate      string  `json:"modifiedDate"`
-	Name              string  `json:"name"`
-	Region            string  `json:"region"`
-	ServerURL         string  `json:"serverURL"`
-	State             string  `json:"state"`
-	OrgID             string  `json:"logOrg"`
-	OrgName           string  `json:"logOrgName"`
-	SpaceID           string  `json:"logSpace"`
-	SpaceName         string  `json:"logSpaceName"`
-	IsPaid            bool    `json:"isPaid"`
-	IsTrusted         bool    `json:"isTrusted"`
-	WorkerCount       int     `json:"workerCount"`
-	Vlans             []Vlan  `json:"vlans"`
-	Addons            []Addon `json:"addons"`
+	CreatedDate              string   `json:"createdDate"`
+	DataCenter               string   `json:"dataCenter"`
+	ID                       string   `json:"id"`
+	IngressHostname          string   `json:"ingressHostname"`
+	IngressSecretName        string   `json:"ingressSecretName"`
+	Location                 string   `json:"location"`
+	MasterKubeVersion        string   `json:"masterKubeVersion"`
+	ModifiedDate             string   `json:"modifiedDate"`
+	Name                     string   `json:"name"`
+	Region                   string   `json:"region"`
+	ResourceGroupID          string   `json:"resourceGroup"`
+	ServerURL                string   `json:"serverURL"`
+	State                    string   `json:"state"`
+	OrgID                    string   `json:"logOrg"`
+	OrgName                  string   `json:"logOrgName"`
+	SpaceID                  string   `json:"logSpace"`
+	SpaceName                string   `json:"logSpaceName"`
+	IsPaid                   bool     `json:"isPaid"`
+	IsTrusted                bool     `json:"isTrusted"`
+	WorkerCount              int      `json:"workerCount"`
+	Vlans                    []Vlan   `json:"vlans"`
+	Addons                   []Addon  `json:"addons"`
+	OwnerEmail               string   `json:"ownerEmail"`
+	APIUser                  string   `json:"apiUser"`
+	MonitoringURL            string   `json:"monitoringURL"`
+	DisableAutoUpdate        bool     `json:"disableAutoUpdate"`
+	EtcdPort                 string   `json:"etcdPort"`
+	MasterStatus             string   `json:"masterStatus"`
+	MasterStatusModifiedDate string   `json:"masterStatusModifiedDate"`
+	KeyProtectEnabled        bool     `json:"keyProtectEnabled"`
+	WorkerZones              []string `json:"workerZones"`
 }
 
 type ClusterUpdateParam struct {
@@ -70,19 +81,21 @@ type ClusterCreateResponse struct {
 
 //ClusterTargetHeader ...
 type ClusterTargetHeader struct {
-	OrgID     string
-	SpaceID   string
-	AccountID string
-	Region    string
+	OrgID         string
+	SpaceID       string
+	AccountID     string
+	Region        string
+	ResourceGroup string
 }
 
 const (
-	orgIDHeader      = "X-Auth-Resource-Org"
-	spaceIDHeader    = "X-Auth-Resource-Space"
-	accountIDHeader  = "X-Auth-Resource-Account"
-	slUserNameHeader = "X-Auth-Softlayer-Username"
-	slAPIKeyHeader   = "X-Auth-Softlayer-APIKey"
-	regionHeader     = "X-Region"
+	orgIDHeader         = "X-Auth-Resource-Org"
+	spaceIDHeader       = "X-Auth-Resource-Space"
+	accountIDHeader     = "X-Auth-Resource-Account"
+	slUserNameHeader    = "X-Auth-Softlayer-Username"
+	slAPIKeyHeader      = "X-Auth-Softlayer-APIKey"
+	regionHeader        = "X-Region"
+	resourceGroupHeader = "X-Auth-Resource-Group"
 )
 
 //ToMap ...
@@ -92,6 +105,7 @@ func (c ClusterTargetHeader) ToMap() map[string]string {
 	m[spaceIDHeader] = c.SpaceID
 	m[accountIDHeader] = c.AccountID
 	m[regionHeader] = c.Region
+	m[resourceGroupHeader] = c.ResourceGroup
 	return m
 }
 
@@ -160,6 +174,7 @@ type Clusters interface {
 	Delete(name string, target ClusterTargetHeader) error
 	Find(name string, target ClusterTargetHeader) (ClusterInfo, error)
 	GetClusterConfig(name, homeDir string, admin bool, target ClusterTargetHeader) (string, error)
+	StoreConfig(name, baseDir string, admin bool, createCalicoConfig bool, target ClusterTargetHeader) (string, string, error)
 	UnsetCredentials(target ClusterTargetHeader) error
 	SetCredentials(slUsername, slAPIKey string, target ClusterTargetHeader) error
 	BindService(params ServiceBindRequest, target ClusterTargetHeader) (ServiceBindResponse, error)
@@ -280,6 +295,126 @@ func (r *clusters) GetClusterConfig(name, dir string, admin bool, target Cluster
 		return "", errors.New("Unable to locate kube config in zip archive")
 	}
 	return filepath.Abs(kubeyml)
+}
+
+// StoreConfig ...
+func (r *clusters) StoreConfig(name, dir string, admin, createCalicoConfig bool, target ClusterTargetHeader) (string, string, error) {
+	var calicoConfig string
+	if !helpers.FileExists(dir) {
+		return "", "", fmt.Errorf("Path: %q, to download the config doesn't exist", dir)
+	}
+	rawURL := fmt.Sprintf("/v1/clusters/%s/config", name)
+	if admin {
+		rawURL += "/admin"
+	}
+	if createCalicoConfig {
+		rawURL += "?createNetworkConfig=true"
+	}
+	resultDir := ComputeClusterConfigDir(dir, name, admin)
+	err := os.MkdirAll(resultDir, 0755)
+	if err != nil {
+		return "", "", fmt.Errorf("Error creating directory to download the cluster config")
+	}
+	downloadPath := filepath.Join(resultDir, "config.zip")
+	trace.Logger.Println("Will download the kubeconfig at", downloadPath)
+
+	var out *os.File
+	if out, err = os.Create(downloadPath); err != nil {
+		return "", "", err
+	}
+	defer out.Close()
+	defer helpers.RemoveFile(downloadPath)
+	_, err = r.client.Get(rawURL, out, target.ToMap())
+	if err != nil {
+		return "", "", err
+	}
+	trace.Logger.Println("Downloaded the kubeconfig at", downloadPath)
+	if err = helpers.Unzip(downloadPath, resultDir); err != nil {
+		return "", "", err
+	}
+	trace.Logger.Println("Downloaded the kubec", resultDir)
+
+	unzipConfigPath, err := kubeConfigDir(resultDir)
+	if err != nil {
+		return "", "", err
+	}
+	trace.Logger.Println("Located unzipped directory: ", unzipConfigPath)
+	files, _ := ioutil.ReadDir(unzipConfigPath)
+	for _, f := range files {
+		old := filepath.Join(unzipConfigPath, f.Name())
+		new := filepath.Join(unzipConfigPath, "../", f.Name())
+		err := os.Rename(old, new)
+		if err != nil {
+			return "", "", fmt.Errorf("Couldn't rename: %q", err)
+		}
+	}
+	err = os.RemoveAll(unzipConfigPath)
+	if err != nil {
+		return "", "", err
+	}
+	// Locate the yaml file and return the new path
+	baseDirFiles, err := ioutil.ReadDir(resultDir)
+	if err != nil {
+		return "", "", err
+	}
+
+	if createCalicoConfig {
+		// Proccess calico golang template file if it exists
+		calicoConfig, err = generateCalicoConfig(resultDir)
+		if err != nil {
+			return "", "", err
+		}
+	}
+
+	for _, baseDirFile := range baseDirFiles {
+		if strings.Contains(baseDirFile.Name(), ".yml") {
+			return fmt.Sprintf("%s/%s", resultDir, baseDirFile.Name()), calicoConfig, nil
+		}
+	}
+
+	return "", "", errors.New("Unable to locate kube config in zip archive")
+}
+
+func kubeConfigDir(baseDir string) (string, error) {
+	baseDirFiles, err := ioutil.ReadDir(baseDir)
+	if err != nil {
+		return "", err
+	}
+
+	// Locate the new directory in form "kubeConfigxxx" stored in the base directory
+	for _, baseDirFile := range baseDirFiles {
+		if baseDirFile.IsDir() && strings.Index(baseDirFile.Name(), "kubeConfig") == 0 {
+			return filepath.Join(baseDir, baseDirFile.Name()), nil
+		}
+	}
+
+	return "", errors.New("Unable to locate extracted configuration directory")
+}
+
+func generateCalicoConfig(desiredConfigPath string) (string, error) {
+	// Proccess calico golang template file if it exists
+	calicoConfigFile := fmt.Sprintf("%s/%s", desiredConfigPath, "calicoctl.cfg.template")
+	newCalicoConfigFile := fmt.Sprintf("%s/%s", desiredConfigPath, "calicoctl.cfg")
+	if _, err := os.Stat(calicoConfigFile); !os.IsNotExist(err) {
+		tmpl, err := template.ParseFiles(calicoConfigFile)
+		if err != nil {
+			return "", fmt.Errorf("Unable to parse network config file: %v", err)
+		}
+
+		newCaliFile, err := os.Create(newCalicoConfigFile)
+		if err != nil {
+			return "", fmt.Errorf("Failed to create network config file: %v", err)
+		}
+		defer newCaliFile.Close()
+
+		templateVars := map[string]string{
+			"certDir": desiredConfigPath,
+		}
+		tmpl.Execute(newCaliFile, templateVars)
+		return newCalicoConfigFile, nil
+	}
+	// Return an empty file path if the calico config doesn't exist
+	return "", nil
 }
 
 //UnsetCredentials ...

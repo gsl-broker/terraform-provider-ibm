@@ -12,6 +12,8 @@ import (
 
 var cfOrganization string
 var cfSpace string
+var cis_crn string
+var cis_domain string
 var ibmid1 string
 var ibmid2 string
 var IAMUser string
@@ -40,6 +42,7 @@ var zoneUpdatePublicVlan string
 var csRegion string
 var extendedHardwareTesting bool
 var err error
+var placementGroupName string
 
 func init() {
 	cfOrganization = os.Getenv("IBM_ORG")
@@ -83,6 +86,12 @@ func init() {
 		fmt.Println("[WARN] Set the environment variable IBM_CONTAINER_REGION for testing ibm_container resources else it is set to default value 'eu-de'")
 	}
 
+	cis_domain = os.Getenv("IBM_CIS_DOMAIN")
+	if cis_domain == "" {
+		cis_domain = "wcpexample.com"
+		fmt.Println("[WARN] Set the environment variable IBM_CIS_DOMAIN with a VALID Domain name for testing ibm_cis resources else it is set to default value 'wcpexample.com' which will cause the test to fail")
+	}
+
 	trustedMachineType = os.Getenv("IBM_TRUSTED_MACHINE_TYPE")
 	if trustedMachineType == "" {
 		trustedMachineType = "mb1c.16x64"
@@ -109,14 +118,14 @@ func init() {
 
 	kubeVersion = os.Getenv("IBM_KUBE_VERSION")
 	if kubeVersion == "" {
-		kubeVersion = "1.9.9"
-		fmt.Println("[WARN] Set the environment variable IBM_KUBE_VERSION for testing ibm_container_cluster resource else it is set to default value '1.9.8'")
+		kubeVersion = "1.10.11"
+		fmt.Println("[WARN] Set the environment variable IBM_KUBE_VERSION for testing ibm_container_cluster resource else it is set to default value '1.10.11'")
 	}
 
 	kubeUpdateVersion = os.Getenv("IBM_KUBE_UPDATE_VERSION")
 	if kubeUpdateVersion == "" {
-		kubeUpdateVersion = "1.10.5"
-		fmt.Println("[WARN] Set the environment variable IBM_KUBE_UPDATE_VERSION for testing ibm_container_cluster resource else it is set to default value '1.10.3'")
+		kubeUpdateVersion = "1.11.5"
+		fmt.Println("[WARN] Set the environment variable IBM_KUBE_UPDATE_VERSION for testing ibm_container_cluster resource else it is set to default value '1.11.5'")
 	}
 
 	privateSubnetID = os.Getenv("IBM_PRIVATE_SUBNET_ID")
@@ -207,6 +216,12 @@ func init() {
 	if zoneUpdatePublicVlan == "" {
 		zoneUpdatePublicVlan = "2388375"
 		fmt.Println("[WARN] Set the environment variable IBM_WORKER_POOL_ZONE_UPDATE_PUBLIC_VLAN for testing ibm_container_worker_pool_zone_attachment resource else it is set to default value '2388375'")
+	}
+
+	placementGroupName = os.Getenv("IBM_PLACEMENT_GROUP_NAME")
+	if placementGroupName == "" {
+		placementGroupName = "terraform_group"
+		fmt.Println("[WARN] Set the environment variable IBM_PLACEMENT_GROUP_NAME for testing ibm_compute_vm_instance resource else it is set to default value 'terraform-group'")
 	}
 
 }

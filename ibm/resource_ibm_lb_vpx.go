@@ -215,7 +215,7 @@ the findVPXPriceItems was throwing an error : VPX version, speed or plan have in
 because the getVPXPriceItemKeyName was getting cmputed as CITRIX_NETSCALER_VPX_11_0_1000MBPS_PLATINUM.
 */
 func getVPXPriceItemKeyName(version string, speed int, plan string) string {
-	name := "CITRIX_NETSCALER_VPX"
+	name := "NETSCALER_VPX"
 	speedMeasurements := "MBPS"
 
 	floatVersion, err := strconv.ParseFloat(version, 10)
@@ -268,7 +268,7 @@ func findVPXPriceItems(version string, speed int, plan string, ipCount int, meta
 
 	for _, item := range items {
 		itemKey := item.KeyName
-		if *itemKey == nadcKey {
+		if strings.Contains(*itemKey, nadcKey) {
 			nadcItemPrice = item.Prices[0]
 		}
 		if *itemKey == ipKey {

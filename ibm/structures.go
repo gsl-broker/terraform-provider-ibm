@@ -2,15 +2,21 @@ package ibm
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/IBM-Cloud/bluemix-go/models"
 
 	"github.com/hashicorp/terraform/flatmap"
 
+	"github.com/IBM-Cloud/bluemix-go/api/account/accountv1"
+	"github.com/IBM-Cloud/bluemix-go/api/cis/cisv1"
 	"github.com/IBM-Cloud/bluemix-go/api/container/containerv1"
+	"github.com/IBM-Cloud/bluemix-go/api/iampap/iampapv1"
+	"github.com/IBM-Cloud/bluemix-go/api/iamuum/iamuumv1"
 	"github.com/IBM-Cloud/bluemix-go/api/mccp/mccpv2"
 	"github.com/apache/incubator-openwhisk-client-go/whisk"
 	"github.com/hashicorp/terraform/helper/schema"
@@ -698,11 +704,20 @@ func flattenDisks(result datatypes.Virtual_Guest) []int {
 		// skip 1,7 which is reserved for the swap disk and metadata
 		if result.BillingItem.OrderItem.Preset != nil {
 			if *v.Device != "1" && *v.Device != "7" && *v.Device != "0" {
-				out = append(out, *v.DiskImage.Capacity)
+				capacity, ok := sl.GrabOk(v, "DiskImage.Capacity")
+
+				if ok {
+					out = append(out, capacity.(int))
+				}
+
 			}
 		} else {
 			if *v.Device != "1" && *v.Device != "7" {
-				out = append(out, *v.DiskImage.Capacity)
+				capacity, ok := sl.GrabOk(v, "DiskImage.Capacity")
+
+				if ok {
+					out = append(out, capacity.(int))
+				}
 			}
 		}
 	}
@@ -717,11 +732,19 @@ func flattenDisksForWindows(result datatypes.Virtual_Guest) []int {
 		// skip 1,7 which is reserved for the swap disk and metadata
 		if result.BillingItem.OrderItem.Preset != nil {
 			if *v.Device != "1" && *v.Device != "7" && *v.Device != "0" && *v.Device != "3" {
-				out = append(out, *v.DiskImage.Capacity)
+				capacity, ok := sl.GrabOk(v, "DiskImage.Capacity")
+
+				if ok {
+					out = append(out, capacity.(int))
+				}
 			}
 		} else {
 			if *v.Device != "1" && *v.Device != "7" && *v.Device != "3" {
-				out = append(out, *v.DiskImage.Capacity)
+				capacity, ok := sl.GrabOk(v, "DiskImage.Capacity")
+
+				if ok {
+					out = append(out, capacity.(int))
+				}
 			}
 		}
 	}
@@ -742,16 +765,21 @@ func idParts(id string) ([]string, error) {
 	return []string{}, fmt.Errorf("The given id %s does not contain / please check documentation on how to provider id during import command", id)
 }
 
-func flattenPolicyResource(list []models.PolicyResource) []map[string]interface{} {
+func vmIdParts(id string) ([]string, error) {
+	parts := strings.Split(id, "/")
+	return parts, nil
+}
+
+func flattenPolicyResource(list []iampapv1.Resource) []map[string]interface{} {
 	result := make([]map[string]interface{}, 0, len(list))
 	for _, i := range list {
 		l := map[string]interface{}{
-			"service":              i.ServiceName,
-			"resource_instance_id": i.ServiceInstance,
-			"region":               i.Region,
-			"resource_type":        i.ResourceType,
-			"resource":             i.Resource,
-			"resource_group_id":    i.ResourceGroupID,
+			"service":              i.GetAttribute("serviceName"),
+			"resource_instance_id": i.GetAttribute("serviceInstance"),
+			"region":               i.GetAttribute("region"),
+			"resource_type":        i.GetAttribute("resourceType"),
+			"resource":             i.GetAttribute("resource"),
+			"resource_group_id":    i.GetAttribute("resourceGroupId"),
 		}
 		result = append(result, l)
 	}
@@ -791,4 +819,185 @@ func contains(s []int, e int) bool {
 		}
 	}
 	return false
+}
+
+func flattenAccessGroupMembers(list []models.AccessGroupMember, users []accountv1.AccountUser, serviceids []models.ServiceID) []map[string]interface{} {
+	result := make([]map[string]interface{}, 0, len(list))
+	for _, m := range list {
+		var value, vtype string
+		if m.Type == iamuumv1.AccessGroupMemberUser {
+			vtype = iamuumv1.AccessGroupMemberUser
+			for _, user := range users {
+				if user.IbmUniqueId == m.ID {
+					value = user.UserId
+					break
+				}
+			}
+		} else {
+
+			vtype = iamuumv1.AccessGroupMemberService
+			for _, srid := range serviceids {
+				if srid.IAMID == m.ID {
+					value = srid.UUID
+					break
+				}
+			}
+
+		}
+		l := map[string]interface{}{
+			"iam_id": value,
+			"type":   vtype,
+		}
+		result = append(result, l)
+	}
+	return result
+}
+
+func flattenUserIds(accountID string, users []string, meta interface{}) ([]string, error) {
+	userids := make([]string, len(users))
+	for i, name := range users {
+		user, err := getAccountUser(accountID, name, meta)
+		if err != nil {
+			return nil, err
+		}
+		userids[i] = user.IbmUniqueId
+	}
+	return userids, nil
+}
+
+func flattenServiceIds(services []string, meta interface{}) ([]string, error) {
+	serviceids := make([]string, len(services))
+	for i, id := range services {
+		serviceID, err := getServiceID(id, meta)
+		if err != nil {
+			return nil, err
+		}
+		serviceids[i] = serviceID.IAMID
+	}
+	return serviceids, nil
+}
+
+func expandOrigins(originsList *schema.Set) (origins []cisv1.Origin) {
+	for _, iface := range originsList.List() {
+		orig := iface.(map[string]interface{})
+		origin := cisv1.Origin{
+			Name:    orig["name"].(string),
+			Address: orig["address"].(string),
+			Enabled: orig["enabled"].(bool),
+			Weight:  orig["weight"].(int),
+		}
+		origins = append(origins, origin)
+	}
+	return
+}
+
+func flattenOrigins(list []cisv1.Origin) []map[string]interface{} {
+	origins := make([]map[string]interface{}, len(list), len(list))
+	for i, origin := range list {
+		l := map[string]interface{}{
+			"name":    origin.Name,
+			"address": origin.Address,
+			"enabled": origin.Enabled,
+			"weight":  origin.Weight,
+		}
+		origins[i] = l
+	}
+	return origins
+}
+
+func expandStringMap(inVal interface{}) map[string]string {
+	outVal := make(map[string]string)
+	if inVal == nil {
+		return outVal
+	}
+	for k, v := range inVal.(map[string]interface{}) {
+		strValue := fmt.Sprintf("%v", v)
+		outVal[k] = strValue
+	}
+	return outVal
+}
+
+func convertTfToCisThreeVar(glbTfId string) (glbId string, zoneId string, cisId string, err error) {
+	g := strings.SplitN(glbTfId, ":", 3)
+	glbId = g[0]
+	if len(g) > 2 {
+		zoneId = g[1]
+		cisId = g[2]
+	} else {
+		err = errors.New("resourceCISGlbRead - cis_id or zone_id not passed")
+		return
+	}
+	return
+}
+
+func convertCisToTfThreeVar(Id string, Id2 string, cisId string) (buildId string) {
+	if Id != "" {
+		buildId = Id + ":" + Id2 + ":" + cisId
+	} else {
+		buildId = ""
+	}
+	return
+}
+
+func convertTfToCisTwoVarSlice(tfIds []string) (Ids []string, cisId string, err error) {
+	for _, item := range tfIds {
+		Id := strings.SplitN(item, ":", 2)
+		if len(Id) < 2 {
+			err = errors.New("cis_id not passed")
+			return
+		}
+		Ids = append(Ids, Id[0])
+		cisId = Id[1]
+	}
+	return
+}
+
+func convertCisToTfTwoVarSlice(Ids []string, cisId string) (buildIds []string) {
+	for _, Id := range Ids {
+		buildIds = append(buildIds, Id+":"+cisId)
+	}
+	return
+}
+
+func convertCisToTfTwoVar(Id string, cisId string) (buildId string) {
+	if Id != "" {
+		buildId = Id + ":" + cisId
+	} else {
+		buildId = ""
+	}
+	return
+}
+
+func convertTftoCisTwoVar(tfId string) (Id string, cisId string, err error) {
+	g := strings.SplitN(tfId, ":", 2)
+	if len(g) > 1 {
+		Id = g[0]
+		cisId = g[1]
+	} else {
+		err = errors.New(" cis_id or zone_id not passed")
+		return
+	}
+	return
+}
+
+func transformToIBMCISDnsData(recordType string, id string, value interface{}) (newValue interface{}, err error) {
+	switch {
+	case id == "flags":
+		switch {
+		case strings.ToUpper(recordType) == "SRV",
+			strings.ToUpper(recordType) == "CAA",
+			strings.ToUpper(recordType) == "DNSKEY":
+			newValue, err = strconv.Atoi(value.(string))
+		case strings.ToUpper(recordType) == "NAPTR":
+			newValue, err = value.(string), nil
+		}
+	case stringInSlice(id, dnsTypeIntFields):
+		newValue, err = strconv.Atoi(value.(string))
+	case stringInSlice(id, dnsTypeFloatFields):
+		newValue, err = strconv.ParseFloat(value.(string), 32)
+	default:
+		newValue, err = value.(string), nil
+	}
+
+	return
 }
