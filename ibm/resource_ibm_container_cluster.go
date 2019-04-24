@@ -555,7 +555,7 @@ func resourceIBMContainerClusterRead(d *schema.ResourceData, meta interface{}) e
 	}
 
 	albs, err := albsAPI.ListClusterALBs(clusterID, targetEnv)
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "The specified cluster is a lite cluster.") {
 		return fmt.Errorf("Error retrieving alb's of the cluster %s: %s", clusterID, err)
 	}
 
@@ -900,7 +900,8 @@ func resourceIBMContainerClusterUpdate(d *schema.ResourceData, meta interface{})
 	//TODO put subnet can't deleted in the error message if such case is observed in the chnages
 	var publicSubnetAdded bool
 	noSubnet := d.Get("no_subnet").(bool)
-	if noSubnet == false {
+	publicVlanID := d.Get("public_vlan_id").(string)
+	if noSubnet == false && publicVlanID != "" {
 		publicSubnetAdded = true
 	}
 	if d.HasChange("subnet_id") {
