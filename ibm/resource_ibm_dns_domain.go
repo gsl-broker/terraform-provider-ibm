@@ -48,6 +48,30 @@ func resourceIBMDNSDomain() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Set:      schema.HashString,
 			},
+			"ttl": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+			"refresh": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+			"retry": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+			"expire": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+			"minimum": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+			"contact": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 		},
 	}
 }
@@ -55,7 +79,8 @@ func resourceIBMDNSDomain() *schema.Resource {
 func resourceIBMDNSDomainCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 	service := services.GetDnsDomainService(sess.SetRetries(0))
-
+	name := (d.Get("name").(string))
+	mxname := "mail." + name
 	// prepare creation parameters
 	opts := datatypes.Dns_Domain{
 		Name: sl.String(d.Get("name").(string)),
@@ -70,6 +95,37 @@ func resourceIBMDNSDomainCreate(d *schema.ResourceData, meta interface{}) error 
 				Host: sl.String("@"),
 				Ttl:  sl.Int(86400),
 				Type: sl.String("a"),
+			},
+			{
+				Data: sl.String(targetString.(string)),
+				Host: sl.String("mail"),
+				Ttl:  sl.Int(86400),
+				Type: sl.String("a"),
+			},
+			{
+				Data: sl.String(targetString.(string)),
+				Host: sl.String("webmail"),
+				Ttl:  sl.Int(86400),
+				Type: sl.String("a"),
+			},
+			{
+				Data: sl.String(targetString.(string)),
+				Host: sl.String("www"),
+				Ttl:  sl.Int(86400),
+				Type: sl.String("a"),
+			},
+			{
+				Data: sl.String(targetString.(string)),
+				Host: sl.String("ftp"),
+				Ttl:  sl.Int(86400),
+				Type: sl.String("a"),
+			},
+			{
+				Data:       sl.String(mxname),
+				Host:       sl.String("@"),
+				Ttl:        sl.Int(86400),
+				Type:       sl.String("mx"),
+				MxPriority: sl.Int(10),
 			},
 		}
 	}
@@ -97,17 +153,25 @@ func resourceIBMDNSDomainRead(d *schema.ResourceData, meta interface{}) error {
 
 	// retrieve remote object state
 	dns_domain, err := service.Id(dnsId).Mask(
-		"id,name,updateDate,resourceRecords",
+		"id,name,updateDate,resourceRecords,serial,soaResourceRecord",
 	).GetObject()
 	if err != nil {
 		return fmt.Errorf("Error retrieving Dns Domain %d: %s", dnsId, err)
 	}
 
 	// populate fields
-	d.Set("name", dns_domain.Name)
-	d.Set("serial", sl.Get(dns_domain.Serial, nil))
-	d.Set("update_date", sl.Get(dns_domain.UpdateDate, nil))
-
+	d.Set("name", *dns_domain.Name)
+	serial := (strconv.Itoa(*dns_domain.Serial))
+	d.Set("serial", serial)
+	date := *dns_domain.UpdateDate
+	d.Set("update_date", date.String())
+	soa := dns_domain.SoaResourceRecord
+	d.Set("ttl", *soa.Ttl)
+	d.Set("refresh", *soa.Refresh)
+	d.Set("retry", *soa.Retry)
+	d.Set("expire", *soa.Expire)
+	d.Set("minimum", *soa.Minimum)
+	d.Set("contact", *soa.ResponsiblePerson)
 	// find a record with host @; that will have the current target.
 	for _, record := range dns_domain.ResourceRecords {
 		if *record.Type == "a" && *record.Host == "@" {

@@ -76,6 +76,14 @@ func resourceIBMLbaas() *schema.Resource {
 				Description:  "Specifies if a load balancer is public or private",
 				ValidateFunc: validateAllowedStringValue([]string{"PUBLIC", "PRIVATE"}),
 			},
+			"usesystempublicippool": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				Default:      "SYSTEM",
+				ForceNew:     true,
+				Description:  "Specify if this load balancer uses system IP pool (true, default) or customer's (null|false) public subnet to allocate IP addresses.",
+				ValidateFunc: validateAllowedStringValue([]string{"SYSTEM", "PUBLIC"}),
+			},
 			"datacenter": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -298,7 +306,12 @@ func resourceIBMLbaasRead(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return fmt.Errorf("Error retrieving load balancer: %s", err)
 	}
-
+	var publicIpType string
+	if *result.UseSystemPublicIpPool == 1 {
+		publicIpType = "SYSTEM"
+	} else {
+		publicIpType = "PUBLIC"
+	}
 	var lbType string
 	if *result.IsPublic == 1 {
 		lbType = "PUBLIC"
@@ -312,6 +325,7 @@ func resourceIBMLbaasRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("description", result.Description)
 	d.Set("datacenter", result.Datacenter.Name)
 	d.Set("type", lbType)
+	d.Set("usesystempublicippool", publicIpType)
 	d.Set("status", result.OperatingStatus)
 	d.Set("vip", result.Address)
 	d.Set("health_monitors", flattenHealthMonitors(result.Listeners))
@@ -420,6 +434,7 @@ func buildLbaasLBProductOrderContainer(d *schema.ResourceData, sess *session.Ses
 	name := d.Get("name").(string)
 	subnets := d.Get("subnets").([]interface{})
 	lbType := d.Get("type").(string)
+	publicIpType := d.Get("usesystempublicippool").(string)
 
 	subnetsParam := []datatypes.Network_Subnet{}
 	for _, subnet := range subnets {
@@ -469,6 +484,9 @@ func buildLbaasLBProductOrderContainer(d *schema.ResourceData, sess *session.Ses
 
 	if lbType == "PRIVATE" {
 		productOrderContainer.IsPublic = sl.Bool(false)
+	}
+	if publicIpType == "PUBLIC" {
+		productOrderContainer.UseSystemPublicIpPool = sl.Bool(false)
 	}
 
 	return &productOrderContainer, nil

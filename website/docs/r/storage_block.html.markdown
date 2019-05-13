@@ -7,7 +7,8 @@ description: |-
 ---
 # ibm\_storage_block
 
-Provides a block storage resource. This allows iSCSI-based [Endurance](https://knowledgelayer.softlayer.com/topic/endurance-storage) and [Performance](https://knowledgelayer.softlayer.com/topic/performance-storage) block storage to be created, updated, and deleted.
+Provides a block storage resource. This allows iSCSI-based [Endurance](https://knowledgelayer.softlayer.com/topic/endurance-storage) and [Performance](https://knowledgelayer.softlayer.com/topic/performance-storage) and 
+(https://knowledgelayer.softlayer.com/topic/portable-storage) [Portable] block storage to be created, updated, and deleted.
 
 Block storage can be accessed and mounted through a Multipath I/O (MPIO) Internet Small Computer System Interface (iSCSI) connection.
 
@@ -50,11 +51,22 @@ resource "ibm_storage_block" "test2" {
 }
 ```
 
+In the following example, you can create 10G of Portable block storage.
+
+```hcl
+resource "ibm_storage_block" "test3" {
+datacenter = "dal13"
+type = "Portable"
+capacity = 10
+disk_description = "Portable Storage"
+}
+```
+
 ## Argument Reference
 
 The following arguments are supported:
 
-* `type` - (Required, string) The type of the storage. Accepted values are `Endurance` and `Performance`.
+* `type` - (Required, string) The type of the storage. Accepted values are `Endurance` and `Performance` and `Portable`.
 * `datacenter` - (Required, string) The data center where you want to provision the block storage instance.
 * `capacity` - (Required, integer) The amount of storage capacity you want to allocate, specified in gigabytes.
 * `iops` - (Required, float) The IOPS value for the storage. You can find available values for Endurance storage in the [IBM Cloud Infrastructure (SoftLayer) docs](https://knowledgelayer.softlayer.com/learning/introduction-endurance-storage).

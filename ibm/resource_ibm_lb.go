@@ -63,6 +63,10 @@ func resourceIBMLb() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"name": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 			"subnet_id": {
 				Type:     schema.TypeInt,
 				Computed: true,
@@ -208,16 +212,31 @@ func resourceIBMLbCreate(d *schema.ResourceData, meta interface{}) error {
 	d.SetId(fmt.Sprintf("%d", *loadBalancer.Id))
 	d.Set("connections", getConnectionLimit(*loadBalancer.ConnectionLimit))
 	d.Set("datacenter", loadBalancer.LoadBalancerHardware[0].Datacenter.Name)
+	d.Set("name", loadBalancer.LoadBalancerHardware[0].Hostname)
 	d.Set("ip_address", loadBalancer.IpAddress.IpAddress)
 	d.Set("subnet_id", loadBalancer.IpAddress.SubnetId)
 	d.Set("ha_enabled", loadBalancer.HighAvailabilityFlag)
 
 	log.Printf("[INFO] Load Balancer ID: %s", d.Id())
 
-	return resourceIBMLbUpdate(d, meta)
+	return addSSLCertificate(d, meta)
 }
 
 func resourceIBMLbUpdate(d *schema.ResourceData, meta interface{}) error {
+	sess := meta.(ClientSession).SoftLayerSession()
+	vipID, _ := strconv.Atoi(d.Id())
+	dedicated := d.Get("dedicated").(bool)
+	if !dedicated {
+		_, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
+			Id(vipID).
+			UpgradeConnectionLimit()
+		if err != nil {
+			return fmt.Errorf("Error during upgrading connections of load balancer: %s", err)
+		}
+	}
+	return resourceIBMLbRead(d, meta)
+}
+func addSSLCertificate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 
 	vipID, _ := strconv.Atoi(d.Id())
@@ -296,7 +315,6 @@ func resourceIBMLbUpdate(d *schema.ResourceData, meta interface{}) error {
 	d.Partial(false)
 	return resourceIBMLbRead(d, meta)
 }
-
 func resourceIBMLbRead(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 	vipID, _ := strconv.Atoi(d.Id())
@@ -316,6 +334,7 @@ func resourceIBMLbRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("subnet_id", vip.IpAddress.SubnetId)
 	d.Set("ha_enabled", vip.HighAvailabilityFlag)
 	d.Set("dedicated", vip.DedicatedFlag)
+	d.Set("name", vip.LoadBalancerHardware[0].Hostname)
 	d.Set("ssl_enabled", vip.SslEnabledFlag)
 	d.Set("ssl_offload", vip.SslActiveFlag)
 	// Optional fields.  Guard against nil pointer dereferences

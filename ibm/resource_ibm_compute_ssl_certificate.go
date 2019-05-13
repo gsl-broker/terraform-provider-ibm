@@ -38,6 +38,19 @@ func resourceIBMComputeSSLCertificate() *schema.Resource {
 				StateFunc: normalizeCert,
 			},
 
+			"certificate_signing_request": &schema.Schema{
+				Type:      schema.TypeString,
+				Optional:  true,
+				ForceNew:  true,
+				StateFunc: normalizeCert,
+			},
+
+			"notes": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
+
 			"private_key": &schema.Schema{
 				Type:      schema.TypeString,
 				Required:  true,
@@ -101,9 +114,11 @@ func resourceIBMComputeSSLCertificateCreate(d *schema.ResourceData, meta interfa
 	service := services.GetSecurityCertificateService(sess.SetRetries(0))
 
 	template := datatypes.Security_Certificate{
-		Certificate:             sl.String(d.Get("certificate").(string)),
-		IntermediateCertificate: sl.String(d.Get("intermediate_certificate").(string)),
-		PrivateKey:              sl.String(d.Get("private_key").(string)),
+		Certificate:               sl.String(d.Get("certificate").(string)),
+		IntermediateCertificate:   sl.String(d.Get("intermediate_certificate").(string)),
+		PrivateKey:                sl.String(d.Get("private_key").(string)),
+		CertificateSigningRequest: sl.String(d.Get("certificate_signing_request").(string)),
+		Notes: sl.String(d.Get("notes").(string)),
 	}
 
 	log.Printf("[INFO] Creating Security Certificate")

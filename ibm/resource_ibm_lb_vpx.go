@@ -213,7 +213,6 @@ func getVPXPriceItemKeyName(version string, speed int, plan string) string {
 	versionReplaced := strings.Replace(newVersion, ".", DELIMITER, -1)
 
 	speedString := strconv.Itoa(speed) + speedMeasurements
-
 	return strings.Join([]string{name, versionReplaced, speedString, strings.ToUpper(plan)}, DELIMITER)
 }
 

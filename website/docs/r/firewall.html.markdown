@@ -8,7 +8,7 @@ description: |-
 
 # ibm\_firewall
 
-Provides a firewall in IBM. One firewall protects one public VLAN and provides in-bound network packet filtering.
+Provides a firewall in IBM. One firewall protects one public VLAN and provides in-bound network packet filtering. Firewall type can be choosen in between the Dedicated Firewall, and Fortigate Security Appliance based on their specific performance and feature requirements.
 
 You can order or find firewalls in the IBM Cloud infrastructure customer portal by navigating to **Network > IP Management > VLANs** and clicking the **Gateway/Firewall** column.
 

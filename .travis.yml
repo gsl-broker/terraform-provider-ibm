@@ -3,6 +3,12 @@ language: go
 go:
 - 1.9.2
 
+
+before_install:
+- mkdir -p $GOPATH/src/github.com/IBM-Cloud/terraform-provider-ibm
+- mv $TRAVIS_BUILD_DIR/* $GOPATH/src/github.com/IBM-Cloud/terraform-provider-ibm
+- cd $GOPATH/src/github.com/IBM-Cloud/terraform-provider-ibm
+
 install:
 # This script is used by the Travis build to install a cookie for
 # go.googlesource.com so rate limits are higher when using `go get` to fetch
@@ -12,6 +18,7 @@ install:
 - go get github.com/kardianos/govendor
 
 script:
+- make fmt
 - make test
 - make vet
 
