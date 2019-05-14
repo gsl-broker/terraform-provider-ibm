@@ -207,6 +207,7 @@ func Provider() terraform.ResourceProvider {
 			"ibm_bandwidth_pool":                        resourceIBMBandwidthPool(),
 			"ibm_firewall_shared":                       resourceIBMFirewallShared(),
 			"ibm_compute_custom_vm_instance":            resourceIBMComputeCustomVmInstance(),
+			"ibm_hardware_firewall_shared":              resourceIBMFirewallShared(),
 		},
 
 		ConfigureFunc: providerConfigure,

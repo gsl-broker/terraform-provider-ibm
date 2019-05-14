@@ -20,11 +20,19 @@ func TestAccIBMFirewallShared_Basic(t *testing.T) {
 				Config: testAccCheckIBMFirewallShared_basic,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
+<<<<<<< HEAD
 						"ibm_firewall_shared.test_firewall", "firewall_type", "10MBPS_HARDWARE_FIREWALL"),
 					resource.TestCheckResourceAttr(
 						"ibm_firewall_shared.test_firewall", "guest_id", "1234567"),
 					resource.TestCheckResourceAttr(
 						"ibm_firewall_shared.test_firewall", "guest_type", "virtual machine"),
+=======
+						"ibm_hardware_firewall_shared.test_firewall", "firewall_type", "10MBPS_HARDWARE_FIREWALL"),
+					resource.TestCheckResourceAttr(
+						"ibm_hardware_firewall_shared.test_firewall", "virtual_instance_id", "1234567"),
+					resource.TestCheckResourceAttr(
+						"ibm_hardware_firewall_shared.test_firewall", "guest_type", "virtual machine"),
+>>>>>>> 93af3a2b7ede40470815c7a6bf9174a548403dd1
 				),
 			},
 		},
@@ -35,7 +43,11 @@ func testAccCheckIBMHardwareFirewallSharedDestroy(s *terraform.State) error {
 	service := services.GetNetworkComponentFirewallService(testAccProvider.Meta().(ClientSession).SoftLayerSession())
 
 	for _, rs := range s.RootModule().Resources {
+<<<<<<< HEAD
 		if rs.Type != "ibm_firewall_shared" {
+=======
+		if rs.Type != "ibm_hardware_firewall_shared" {
+>>>>>>> 93af3a2b7ede40470815c7a6bf9174a548403dd1
 			continue
 		}
 
@@ -67,7 +79,13 @@ resource "ibm_compute_vm_instance" "fwvm1" {
     local_disk = false
 }
 
+<<<<<<< HEAD
 resource "ibm_firewall_shared" "test_firewall" {
 	firewall_type = "100MBPS_HARDWARE_FIREWALL"
 	guest_id = "${ibm_compute_vm_instance.fwvm1.id}"
+=======
+resource "ibm_hardware_firewall_shared" "test_firewall" {
+	firewall_type = "100MBPS_HARDWARE_FIREWALL"
+	virtual_instance_id = "${ibm_compute_vm_instance.fwvm1.id}"
+>>>>>>> 93af3a2b7ede40470815c7a6bf9174a548403dd1
 	guest_type="virtual machine"}`
