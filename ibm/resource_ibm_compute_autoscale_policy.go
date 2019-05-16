@@ -161,9 +161,7 @@ func resourceIBMComputeAutoScalePolicyCreate(d *schema.ResourceData, meta interf
 			ScaleGroupId: sl.Int(d.Get("scale_group_id").(int)),
 			Cooldown:     sl.Int(d.Get("cooldown").(int)),
 		}
-		if *opts.ScaleActions[0].Amount <= 0 {
-			return fmt.Errorf("Error retrieving scalePolicy: %s", "scale_amount should be greater than 0.")
-		}
+
 		if *opts.Cooldown < 0 || *opts.Cooldown > 864000 {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", "cooldown must be between 0 seconds and 10 days.")
 		}
@@ -177,7 +175,9 @@ func resourceIBMComputeAutoScalePolicyCreate(d *schema.ResourceData, meta interf
 		if *opts.ScaleActions[0].ScaleType != "ABSOLUTE" && *opts.ScaleActions[0].ScaleType != "RELATIVE" && *opts.ScaleActions[0].ScaleType != "PERCENT" {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", "scale_type should be ABSOLUTE, RELATIVE, or PERCENT.")
 		}
-
+		if *opts.ScaleActions[0].Amount <= 0 {
+			return fmt.Errorf("Error retrieving scalePolicy: %s", "scale_amount should be greater than 0.")
+		}
 		if _, ok := d.GetOk("triggers"); ok {
 			err = validateTriggerTypes(d)
 			if err != nil {
