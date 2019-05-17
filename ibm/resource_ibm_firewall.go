@@ -44,6 +44,8 @@ func resourceIBMFirewall() *schema.Resource {
 				ValidateFunc: validateAllowedStringValue([]string{
 					"HARDWARE_FIREWALL_DEDICATED",
 					"FORTIGATE_SECURITY_APPLIANCE",
+					"HARDWARE_FIREWALL_HIGH_AVAILABILITY",
+					"FORTIGATE_SECURITY_APPLIANCE_HIGH_AVAILABILITY",
 				}),
 			},
 
