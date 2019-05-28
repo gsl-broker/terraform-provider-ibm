@@ -26,6 +26,8 @@ func TestAccIBMContainerClusterDataSource_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("data.ibm_container_cluster.testacc_ds_cluster", "bounded_services.#", "1"),
 					resource.TestCheckResourceAttr("data.ibm_container_cluster.testacc_ds_cluster", "worker_pools.#", "1"),
 					resource.TestCheckResourceAttr("data.ibm_container_cluster.testacc_ds_cluster", "albs.#", "2"),
+					resource.TestCheckResourceAttrSet(
+						"data.ibm_container_cluster.testacc_ds_cluster", "resource_group_id"),
 					testAccIBMClusterVlansCheck("data.ibm_container_cluster.testacc_ds_cluster"),
 				),
 			},
@@ -123,6 +125,7 @@ data "ibm_container_cluster" "testacc_ds_cluster" {
     account_guid = "${data.ibm_account.testacc_acc.id}"
     cluster_name_id = "${ibm_container_cluster.testacc_cluster.id}"
     region = "%s"
+    depends_on = ["ibm_container_bind_service.bind_service"]
 }
 `, cfOrganization, cfOrganization, cfSpace, clusterName, datacenter, machineType, publicVlanID, privateVlanID, subnetID, serviceName, serviceKeyName, csRegion, csRegion)
 }

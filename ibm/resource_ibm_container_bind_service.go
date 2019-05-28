@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	v1 "github.com/IBM-Cloud/bluemix-go/api/container/containerv1"
+	"github.com/IBM-Cloud/bluemix-go/api/resource/resourcev1/management"
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
@@ -77,11 +78,28 @@ func resourceIBMContainerBindService() *schema.Resource {
 				Optional:    true,
 				ForceNew:    true,
 			},
+			"key": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
+			"role": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
 			"region": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				ForceNew:    true,
 				Description: "The cluster region",
+			},
+			"resource_group_id": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				Description:      "ID of the resource group.",
+				ForceNew:         true,
+				DiffSuppressFunc: applyOnce,
 			},
 			"tags": {
 				Type:     schema.TypeSet,
@@ -98,6 +116,7 @@ func getClusterTargetHeader(d *schema.ResourceData, meta interface{}) (v1.Cluste
 	spaceGUID := d.Get("space_guid").(string)
 	accountGUID := d.Get("account_guid").(string)
 	region := d.Get("region").(string)
+	resourceGroup := d.Get("resource_group_id").(string)
 
 	sess, err := meta.(ClientSession).BluemixSession()
 	if err != nil {
@@ -107,12 +126,34 @@ func getClusterTargetHeader(d *schema.ResourceData, meta interface{}) (v1.Cluste
 	if region == "" {
 		region = sess.Config.Region
 	}
+	if resourceGroup == "" {
+		resourceGroup = sess.Config.ResourceGroup
+
+		if resourceGroup == "" {
+			rsMangClient, err := meta.(ClientSession).ResourceManagementAPI()
+			if err != nil {
+				return v1.ClusterTargetHeader{}, err
+			}
+			resourceGroupQuery := management.ResourceGroupQuery{
+				Default: true,
+			}
+			grpList, err := rsMangClient.ResourceGroup().List(&resourceGroupQuery)
+			if err != nil {
+				return v1.ClusterTargetHeader{}, err
+			}
+			if len(grpList) <= 0 {
+				return v1.ClusterTargetHeader{}, fmt.Errorf("The targeted resource group could not be found. Make sure you have required permissions to access the resource group.")
+			}
+			resourceGroup = grpList[0].ID
+		}
+	}
 
 	targetEnv := v1.ClusterTargetHeader{
-		OrgID:     orgGUID,
-		SpaceID:   spaceGUID,
-		AccountID: accountGUID,
-		Region:    region,
+		OrgID:         orgGUID,
+		SpaceID:       spaceGUID,
+		AccountID:     accountGUID,
+		Region:        region,
+		ResourceGroup: resourceGroup,
 	}
 	return targetEnv, nil
 }
@@ -132,10 +173,19 @@ func resourceIBMContainerBindServiceCreate(d *schema.ResourceData, meta interfac
 	} else {
 		return fmt.Errorf("Please set either service_instance_name or service_instance_id")
 	}
+
 	bindService := v1.ServiceBindRequest{
 		ClusterNameOrID:         clusterNameID,
 		ServiceInstanceNameOrID: serviceInstanceNameID,
 		NamespaceID:             namespaceID,
+	}
+
+	if v, ok := d.GetOk("key"); ok {
+		bindService.ServiceKeyGUID = v.(string)
+	}
+
+	if v, ok := d.GetOk("role"); ok {
+		bindService.Role = v.(string)
 	}
 
 	targetEnv, err := getClusterTargetHeader(d, meta)

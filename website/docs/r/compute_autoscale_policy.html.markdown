@@ -55,7 +55,7 @@ The following arguments are supported:
 * `scale_group_id` - (Required, integer) The ID of the auto scale group associated with the policy.
 * `append_triggers_to_existing` - (Optional, boolean) The value to notify whether the policy is to be updated or new policy is to be created.
 * `triggers` - (Optional, array of integers and strings) The triggers to check for this group.
-* `tags` - (Optional, array of strings) Tags associated with the auto scaling policy instance.
+* `tags` - (Optional, array of strings) Tags associated with the auto scaling policy instance.  
   **NOTE**: `Tags` are managed locally and not stored on the IBM Cloud service endpoint at this moment.
 
 ## Attribute Reference

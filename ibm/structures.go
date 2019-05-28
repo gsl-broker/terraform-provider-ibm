@@ -2,15 +2,23 @@ package ibm
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/url"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/IBM-Cloud/bluemix-go/models"
 
 	"github.com/hashicorp/terraform/flatmap"
 
+	"github.com/IBM-Cloud/bluemix-go/api/account/accountv1"
+	"github.com/IBM-Cloud/bluemix-go/api/cis/cisv1"
 	"github.com/IBM-Cloud/bluemix-go/api/container/containerv1"
+	"github.com/IBM-Cloud/bluemix-go/api/iampap/iampapv1"
+	"github.com/IBM-Cloud/bluemix-go/api/iamuum/iamuumv1"
+	"github.com/IBM-Cloud/bluemix-go/api/icd/icdv4"
 	"github.com/IBM-Cloud/bluemix-go/api/mccp/mccpv2"
 	"github.com/apache/incubator-openwhisk-client-go/whisk"
 	"github.com/hashicorp/terraform/helper/schema"
@@ -317,21 +325,23 @@ func flattenWorkerPools(list []containerv1.WorkerPoolResponse) []map[string]inte
 	return workerPools
 }
 
-func flattenAlbs(list []containerv1.ALBConfig) []map[string]interface{} {
-	albs := make([]map[string]interface{}, len(list))
-	for i, alb := range list {
-		l := map[string]interface{}{
-			"id":                 alb.ALBID,
-			"name":               alb.Name,
-			"alb_type":           alb.ALBType,
-			"enable":             alb.Enable,
-			"state":              alb.State,
-			"num_of_instances":   alb.NumOfInstances,
-			"alb_ip":             alb.ALBIP,
-			"resize":             alb.Resize,
-			"disable_deployment": alb.DisableDeployment,
+func flattenAlbs(list []containerv1.ALBConfig, filterType string) []map[string]interface{} {
+	albs := make([]map[string]interface{}, 0)
+	for _, alb := range list {
+		if alb.ALBType == filterType || filterType == "all" {
+			l := map[string]interface{}{
+				"id":                 alb.ALBID,
+				"name":               alb.Name,
+				"alb_type":           alb.ALBType,
+				"enable":             alb.Enable,
+				"state":              alb.State,
+				"num_of_instances":   alb.NumOfInstances,
+				"alb_ip":             alb.ALBIP,
+				"resize":             alb.Resize,
+				"disable_deployment": alb.DisableDeployment,
+			}
+			albs = append(albs, l)
 		}
-		albs[i] = l
 	}
 	return albs
 }
@@ -360,6 +370,51 @@ func flattenVlans(list []containerv1.Vlan) []map[string]interface{} {
 		vlans[i] = l
 	}
 	return vlans
+}
+
+func flattenIcdGroups(grouplist icdv4.GroupList) []map[string]interface{} {
+	groups := make([]map[string]interface{}, len(grouplist.Groups))
+	for i, group := range grouplist.Groups {
+		memorys := make([]map[string]interface{}, 1)
+		memory := make(map[string]interface{})
+		memory["units"] = group.Memory.Units
+		memory["allocation_mb"] = group.Memory.AllocationMb
+		memory["minimum_mb"] = group.Memory.MinimumMb
+		memory["step_size_mb"] = group.Memory.StepSizeMb
+		memory["is_adjustable"] = group.Memory.IsAdjustable
+		memory["can_scale_down"] = group.Memory.CanScaleDown
+		memorys[0] = memory
+
+		cpus := make([]map[string]interface{}, 1)
+		cpu := make(map[string]interface{})
+		cpu["units"] = group.Cpu.Units
+		cpu["allocation_count"] = group.Cpu.AllocationCount
+		cpu["minimum_count"] = group.Cpu.MinimumCount
+		cpu["step_size_count"] = group.Cpu.StepSizeCount
+		cpu["is_adjustable"] = group.Cpu.IsAdjustable
+		cpu["can_scale_down"] = group.Cpu.CanScaleDown
+		cpus[0] = cpu
+
+		disks := make([]map[string]interface{}, 1)
+		disk := make(map[string]interface{})
+		disk["units"] = group.Disk.Units
+		disk["allocation_mb"] = group.Disk.AllocationMb
+		disk["minimum_mb"] = group.Disk.MinimumMb
+		disk["step_size_mb"] = group.Disk.StepSizeMb
+		disk["is_adjustable"] = group.Disk.IsAdjustable
+		disk["can_scale_down"] = group.Disk.CanScaleDown
+		disks[0] = disk
+
+		l := map[string]interface{}{
+			"group_id": group.Id,
+			"count":    group.Count,
+			"memory":   memorys,
+			"cpu":      cpus,
+			"disk":     disks,
+		}
+		groups[i] = l
+	}
+	return groups
 }
 
 func normalizeJSONString(jsonString interface{}) (string, error) {
@@ -698,11 +753,20 @@ func flattenDisks(result datatypes.Virtual_Guest) []int {
 		// skip 1,7 which is reserved for the swap disk and metadata
 		if result.BillingItem.OrderItem.Preset != nil {
 			if *v.Device != "1" && *v.Device != "7" && *v.Device != "0" {
-				out = append(out, *v.DiskImage.Capacity)
+				capacity, ok := sl.GrabOk(v, "DiskImage.Capacity")
+
+				if ok {
+					out = append(out, capacity.(int))
+				}
+
 			}
 		} else {
 			if *v.Device != "1" && *v.Device != "7" {
-				out = append(out, *v.DiskImage.Capacity)
+				capacity, ok := sl.GrabOk(v, "DiskImage.Capacity")
+
+				if ok {
+					out = append(out, capacity.(int))
+				}
 			}
 		}
 	}
@@ -717,11 +781,19 @@ func flattenDisksForWindows(result datatypes.Virtual_Guest) []int {
 		// skip 1,7 which is reserved for the swap disk and metadata
 		if result.BillingItem.OrderItem.Preset != nil {
 			if *v.Device != "1" && *v.Device != "7" && *v.Device != "0" && *v.Device != "3" {
-				out = append(out, *v.DiskImage.Capacity)
+				capacity, ok := sl.GrabOk(v, "DiskImage.Capacity")
+
+				if ok {
+					out = append(out, capacity.(int))
+				}
 			}
 		} else {
 			if *v.Device != "1" && *v.Device != "7" && *v.Device != "3" {
-				out = append(out, *v.DiskImage.Capacity)
+				capacity, ok := sl.GrabOk(v, "DiskImage.Capacity")
+
+				if ok {
+					out = append(out, capacity.(int))
+				}
 			}
 		}
 	}
@@ -742,22 +814,28 @@ func idParts(id string) ([]string, error) {
 	return []string{}, fmt.Errorf("The given id %s does not contain / please check documentation on how to provider id during import command", id)
 }
 
-func flattenPolicyResource(list []models.PolicyResource) []map[string]interface{} {
+func vmIdParts(id string) ([]string, error) {
+	parts := strings.Split(id, "/")
+	return parts, nil
+}
+
+func flattenPolicyResource(list []iampapv1.Resource) []map[string]interface{} {
 	result := make([]map[string]interface{}, 0, len(list))
 	for _, i := range list {
 		l := map[string]interface{}{
-			"service":              i.ServiceName,
-			"resource_instance_id": i.ServiceInstance,
-			"region":               i.Region,
-			"resource_type":        i.ResourceType,
-			"resource":             i.Resource,
-			"resource_group_id":    i.ResourceGroupID,
+			"service":              i.GetAttribute("serviceName"),
+			"resource_instance_id": i.GetAttribute("serviceInstance"),
+			"region":               i.GetAttribute("region"),
+			"resource_type":        i.GetAttribute("resourceType"),
+			"resource":             i.GetAttribute("resource"),
+			"resource_group_id":    i.GetAttribute("resourceGroupId"),
 		}
 		result = append(result, l)
 	}
 	return result
 }
 
+// Cloud Internet Services
 func flattenHealthMonitors(list []datatypes.Network_LBaaS_Listener) []map[string]interface{} {
 	result := make([]map[string]interface{}, 0, len(list))
 	ports := make([]int, 0, 0)
@@ -791,4 +869,463 @@ func contains(s []int, e int) bool {
 		}
 	}
 	return false
+}
+
+func flattenAccessGroupMembers(list []models.AccessGroupMember, users []accountv1.AccountUser, serviceids []models.ServiceID) []map[string]interface{} {
+	result := make([]map[string]interface{}, 0, len(list))
+	for _, m := range list {
+		var value, vtype string
+		if m.Type == iamuumv1.AccessGroupMemberUser {
+			vtype = iamuumv1.AccessGroupMemberUser
+			for _, user := range users {
+				if user.IbmUniqueId == m.ID {
+					value = user.UserId
+					break
+				}
+			}
+		} else {
+
+			vtype = iamuumv1.AccessGroupMemberService
+			for _, srid := range serviceids {
+				if srid.IAMID == m.ID {
+					value = srid.UUID
+					break
+				}
+			}
+
+		}
+		l := map[string]interface{}{
+			"iam_id": value,
+			"type":   vtype,
+		}
+		result = append(result, l)
+	}
+	return result
+}
+
+func flattenUserIds(accountID string, users []string, meta interface{}) ([]string, error) {
+	userids := make([]string, len(users))
+	for i, name := range users {
+		user, err := getAccountUser(accountID, name, meta)
+		if err != nil {
+			return nil, err
+		}
+		userids[i] = user.IbmUniqueId
+	}
+	return userids, nil
+}
+
+func flattenServiceIds(services []string, meta interface{}) ([]string, error) {
+	serviceids := make([]string, len(services))
+	for i, id := range services {
+		serviceID, err := getServiceID(id, meta)
+		if err != nil {
+			return nil, err
+		}
+		serviceids[i] = serviceID.IAMID
+	}
+	return serviceids, nil
+}
+
+// Cloud Internet Services
+func expandOrigins(originsList *schema.Set) (origins []cisv1.Origin) {
+	for _, iface := range originsList.List() {
+		orig := iface.(map[string]interface{})
+		origin := cisv1.Origin{
+			Name:    orig["name"].(string),
+			Address: orig["address"].(string),
+			Enabled: orig["enabled"].(bool),
+			Weight:  orig["weight"].(int),
+		}
+		origins = append(origins, origin)
+	}
+	return
+}
+
+func expandUsers(userList *schema.Set) (users []icdv4.User) {
+	for _, iface := range userList.List() {
+		userEl := iface.(map[string]interface{})
+		user := icdv4.User{
+			UserName: userEl["name"].(string),
+			Password: userEl["password"].(string),
+		}
+		users = append(users, user)
+	}
+	return
+}
+
+// IBM Cloud Databases
+func flattenConnectionStrings(cs []CsEntry) []map[string]interface{} {
+	entries := make([]map[string]interface{}, len(cs), len(cs))
+	for i, csEntry := range cs {
+		l := map[string]interface{}{
+			"name":         csEntry.Name,
+			"password":     csEntry.Password,
+			"composed":     csEntry.Composed,
+			"certname":     csEntry.CertName,
+			"certbase64":   csEntry.CertBase64,
+			"queryoptions": csEntry.QueryOptions,
+			"scheme":       csEntry.Scheme,
+			"path":         csEntry.Path,
+			"database":     csEntry.Database,
+		}
+		hosts := csEntry.Hosts
+		hostsList := make([]map[string]interface{}, len(hosts), len(hosts))
+		for j, host := range hosts {
+			z := map[string]interface{}{
+				"hostname": host.HostName,
+				"port":     strconv.Itoa(host.Port),
+			}
+			hostsList[j] = z
+		}
+		l["hosts"] = hostsList
+		var queryOpts string
+		if len(csEntry.QueryOptions) != 0 {
+			queryOpts = "?"
+			count := 0
+			for k, v := range csEntry.QueryOptions {
+				if count >= 1 {
+					queryOpts = queryOpts + "&"
+				}
+				queryOpts = queryOpts + fmt.Sprintf("%v", k) + "=" + fmt.Sprintf("%v", v)
+				count++
+			}
+		} else {
+			queryOpts = ""
+		}
+		l["queryoptions"] = queryOpts
+		entries[i] = l
+	}
+
+	return entries
+}
+
+func flattenPhaseOneAttributes(vpn *datatypes.Network_Tunnel_Module_Context) []map[string]interface{} {
+	phaseoneAttributesMap := make([]map[string]interface{}, 0, 1)
+	phaseoneAttributes := make(map[string]interface{})
+	phaseoneAttributes["authentication"] = *vpn.PhaseOneAuthentication
+	phaseoneAttributes["encryption"] = *vpn.PhaseOneEncryption
+	phaseoneAttributes["diffie_hellman_group"] = *vpn.PhaseOneDiffieHellmanGroup
+	phaseoneAttributes["keylife"] = *vpn.PhaseOneKeylife
+	phaseoneAttributesMap = append(phaseoneAttributesMap, phaseoneAttributes)
+	return phaseoneAttributesMap
+}
+
+func flattenPhaseTwoAttributes(vpn *datatypes.Network_Tunnel_Module_Context) []map[string]interface{} {
+	phasetwoAttributesMap := make([]map[string]interface{}, 0, 1)
+	phasetwoAttributes := make(map[string]interface{})
+	phasetwoAttributes["authentication"] = *vpn.PhaseTwoAuthentication
+	phasetwoAttributes["encryption"] = *vpn.PhaseTwoEncryption
+	phasetwoAttributes["diffie_hellman_group"] = *vpn.PhaseTwoDiffieHellmanGroup
+	phasetwoAttributes["keylife"] = *vpn.PhaseTwoKeylife
+	phasetwoAttributesMap = append(phasetwoAttributesMap, phasetwoAttributes)
+	return phasetwoAttributesMap
+}
+
+func flattenaddressTranslation(vpn *datatypes.Network_Tunnel_Module_Context, fwID int) []map[string]interface{} {
+	addressTranslationMap := make([]map[string]interface{}, 0, 1)
+	addressTranslationAttributes := make(map[string]interface{})
+	for _, networkAddressTranslation := range vpn.AddressTranslations {
+		if *networkAddressTranslation.NetworkTunnelContext.Id == fwID {
+			addressTranslationAttributes["remote_ip_adress"] = *networkAddressTranslation.CustomerIpAddress
+			addressTranslationAttributes["internal_ip_adress"] = *networkAddressTranslation.InternalIpAddress
+			addressTranslationAttributes["notes"] = *networkAddressTranslation.Notes
+		}
+	}
+	addressTranslationMap = append(addressTranslationMap, addressTranslationAttributes)
+	return addressTranslationMap
+}
+
+func flattenremoteSubnet(vpn *datatypes.Network_Tunnel_Module_Context) []map[string]interface{} {
+	remoteSubnetMap := make([]map[string]interface{}, 0, 1)
+	remoteSubnetAttributes := make(map[string]interface{})
+	for _, customerSubnet := range vpn.CustomerSubnets {
+		remoteSubnetAttributes["remote_ip_adress"] = customerSubnet.NetworkIdentifier
+		remoteSubnetAttributes["remote_ip_cidr"] = customerSubnet.Cidr
+		remoteSubnetAttributes["account_id"] = customerSubnet.AccountId
+	}
+	remoteSubnetMap = append(remoteSubnetMap, remoteSubnetAttributes)
+	return remoteSubnetMap
+}
+
+// IBM Cloud Databases
+func expandWhitelist(whiteList *schema.Set) (whitelist []icdv4.WhitelistEntry) {
+	for _, iface := range whiteList.List() {
+		wlItem := iface.(map[string]interface{})
+		wlEntry := icdv4.WhitelistEntry{
+			Address:     wlItem["address"].(string),
+			Description: wlItem["description"].(string),
+		}
+		whitelist = append(whitelist, wlEntry)
+	}
+	return
+}
+
+// Cloud Internet Services
+func flattenWhitelist(whitelist icdv4.Whitelist) []map[string]interface{} {
+	entries := make([]map[string]interface{}, len(whitelist.WhitelistEntrys), len(whitelist.WhitelistEntrys))
+	for i, whitelistEntry := range whitelist.WhitelistEntrys {
+		l := map[string]interface{}{
+			"address":     whitelistEntry.Address,
+			"description": whitelistEntry.Description,
+		}
+		entries[i] = l
+	}
+	return entries
+}
+
+// Cloud Internet Services
+func flattenOrigins(list []cisv1.Origin) []map[string]interface{} {
+	origins := make([]map[string]interface{}, len(list), len(list))
+	for i, origin := range list {
+		l := map[string]interface{}{
+			"name":    origin.Name,
+			"address": origin.Address,
+			"enabled": origin.Enabled,
+			"weight":  origin.Weight,
+		}
+		origins[i] = l
+	}
+	return origins
+}
+
+func expandStringMap(inVal interface{}) map[string]string {
+	outVal := make(map[string]string)
+	if inVal == nil {
+		return outVal
+	}
+	for k, v := range inVal.(map[string]interface{}) {
+		strValue := fmt.Sprintf("%v", v)
+		outVal[k] = strValue
+	}
+	return outVal
+}
+
+// Cloud Internet Services
+func convertTfToCisThreeVar(glbTfId string) (glbId string, zoneId string, cisId string, err error) {
+	g := strings.SplitN(glbTfId, ":", 3)
+	glbId = g[0]
+	if len(g) > 2 {
+		zoneId = g[1]
+		cisId = g[2]
+	} else {
+		err = errors.New("cis_id or zone_id not passed")
+		return
+	}
+	return
+}
+
+// Cloud Internet Services
+func convertCisToTfThreeVar(Id string, Id2 string, cisId string) (buildId string) {
+	if Id != "" {
+		buildId = Id + ":" + Id2 + ":" + cisId
+	} else {
+		buildId = ""
+	}
+	return
+}
+
+// Cloud Internet Services
+func convertTfToCisTwoVarSlice(tfIds []string) (Ids []string, cisId string, err error) {
+	for _, item := range tfIds {
+		Id := strings.SplitN(item, ":", 2)
+		if len(Id) < 2 {
+			err = errors.New("cis_id not passed")
+			return
+		}
+		Ids = append(Ids, Id[0])
+		cisId = Id[1]
+	}
+	return
+}
+
+// Cloud Internet Services
+func convertCisToTfTwoVarSlice(Ids []string, cisId string) (buildIds []string) {
+	for _, Id := range Ids {
+		buildIds = append(buildIds, Id+":"+cisId)
+	}
+	return
+}
+
+// Cloud Internet Services
+func convertCisToTfTwoVar(Id string, cisId string) (buildId string) {
+	if Id != "" {
+		buildId = Id + ":" + cisId
+	} else {
+		buildId = ""
+	}
+	return
+}
+
+// Cloud Internet Services
+func convertTftoCisTwoVar(tfId string) (Id string, cisId string, err error) {
+	g := strings.SplitN(tfId, ":", 2)
+	if len(g) > 1 {
+		Id = g[0]
+		cisId = g[1]
+	} else {
+		err = errors.New(" cis_id or zone_id not passed")
+		return
+	}
+	return
+}
+
+// Cloud Internet Services
+func transformToIBMCISDnsData(recordType string, id string, value interface{}) (newValue interface{}, err error) {
+	switch {
+	case id == "flags":
+		switch {
+		case strings.ToUpper(recordType) == "SRV",
+			strings.ToUpper(recordType) == "CAA",
+			strings.ToUpper(recordType) == "DNSKEY":
+			newValue, err = strconv.Atoi(value.(string))
+		case strings.ToUpper(recordType) == "NAPTR":
+			newValue, err = value.(string), nil
+		}
+	case stringInSlice(id, dnsTypeIntFields):
+		newValue, err = strconv.Atoi(value.(string))
+	case stringInSlice(id, dnsTypeFloatFields):
+		newValue, err = strconv.ParseFloat(value.(string), 32)
+	default:
+		newValue, err = value.(string), nil
+	}
+
+	return
+}
+
+func indexOf(element string, data []string) int {
+	for k, v := range data {
+		if element == v {
+			return k
+		}
+	}
+	return -1 //not found.
+}
+
+func rcInstanceExists(resourceId string, resourceType string, meta interface{}) (bool, error) {
+	// Check to see if Resource Manager instance exists
+	rsConClient, err := meta.(ClientSession).ResourceControllerAPI()
+	if err != nil {
+		return true, nil
+	}
+	exists := true
+	instance, err := rsConClient.ResourceServiceInstance().GetInstance(resourceId)
+	if err != nil {
+		if strings.Contains(err.Error(), "Object not found") ||
+			strings.Contains(err.Error(), "status code: 404") {
+			exists = false
+		} else {
+			return true, fmt.Errorf("Error checking resource instance exists: %s", err)
+		}
+	} else {
+		if strings.Contains(instance.State, "removed") {
+			exists = false
+		}
+	}
+	if exists {
+		return true, nil
+	}
+	// Implement when pointer to terraform.State available
+	// If rcInstance is now in removed state, set TF state to removed
+	// s := *terraform.State
+	// for _, r := range s.RootModule().Resources {
+	//  if r.Type != resourceType {
+	//      continue
+	//  }
+	//  if r.Primary.ID == resourceId {
+	//      r.Primary.Set("status", "removed")
+	//  }
+	// }
+	return false, nil
+}
+
+// Implement when pointer to terraform.State available
+// func resourceInstanceExistsTf(resourceId string, resourceType string) bool {
+//  // Check TF state to see if Cloud resource instance has already been removed
+//  s := *terraform.State
+//  for _, r := range s.RootModule().Resources {
+//      if r.Type != resourceType {
+//          continue
+//      }
+//      if r.Primary.ID == resourceId {
+//          if strings.Contains(r.Primary.Attributes["status"], "removed") {
+//              return false
+//          }
+//      }
+//  }
+//  return true
+// }
+
+// convert CRN to be url safe
+func EscapeUrlParm(urlParm string) string {
+	if strings.Contains(urlParm, "/") {
+		newUrlParm := url.PathEscape(urlParm)
+		return newUrlParm
+	}
+	return urlParm
+}
+
+func GetTags(d *schema.ResourceData, meta interface{}) error {
+	resourceID := d.Id()
+	gtClient, err := meta.(ClientSession).GlobalTaggingAPI()
+	if err != nil {
+		return fmt.Errorf("Error getting global tagging client settings: %s", err)
+	}
+	taggingResult, err := gtClient.Tags().GetTags(resourceID)
+	if err != nil {
+		return err
+	}
+	var taglist []string
+	for _, item := range taggingResult.Items {
+		taglist = append(taglist, item.Name)
+	}
+	d.Set("tags", flattenStringList(taglist))
+	return nil
+}
+
+func UpdateTags(d *schema.ResourceData, meta interface{}) error {
+	resourceID := d.Id()
+	gtClient, err := meta.(ClientSession).GlobalTaggingAPI()
+	if err != nil {
+		return fmt.Errorf("Error getting global tagging client settings: %s", err)
+	}
+	oldList, newList := d.GetChange("tags")
+	if oldList == nil {
+		oldList = new(schema.Set)
+	}
+	if newList == nil {
+		newList = new(schema.Set)
+	}
+	os := oldList.(*schema.Set)
+	ns := newList.(*schema.Set)
+	removeInt := os.Difference(ns).List()
+	addInt := ns.Difference(os).List()
+	add := make([]string, len(addInt))
+	for i, v := range addInt {
+		add[i] = fmt.Sprint(v)
+	}
+	remove := make([]string, len(removeInt))
+	for i, v := range removeInt {
+		remove[i] = fmt.Sprint(v)
+	}
+
+	if len(add) > 0 {
+		_, err := gtClient.Tags().AttachTags(resourceID, add)
+		if err != nil {
+			return fmt.Errorf("Error updating database tags %v : %s", add, err)
+		}
+	}
+	if len(remove) > 0 {
+		_, err := gtClient.Tags().DetachTags(resourceID, remove)
+		if err != nil {
+			return fmt.Errorf("Error detaching database tags %v: %s", remove, err)
+		}
+		for _, v := range remove {
+			_, err := gtClient.Tags().DeleteTag(v)
+			if err != nil {
+				return fmt.Errorf("Error deleting database tag %v: %s", v, err)
+			}
+		}
+	}
+	return nil
 }

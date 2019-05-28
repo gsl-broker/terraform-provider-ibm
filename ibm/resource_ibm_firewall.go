@@ -22,8 +22,8 @@ const (
 
 	vlanMask = "firewallNetworkComponents,networkVlanFirewall.billingItem.orderItem.order.id,dedicatedFirewallFlag" +
 		",firewallGuestNetworkComponents,firewallInterfaces,firewallRules,highAvailabilityFirewallFlag"
-	fwMask        = "id,datacenter,primaryIpAddress,networkVlan.highAvailabilityFirewallFlag,tagReferences[id,tag[name]]"
-	multiVlanMask = "id,name,networkFirewall[id,customerManagedFlag,datacenter.name,billingItem[orderItem.order.id,activeChildren[categoryCode, description,id]],managementCredentials,firewallType],publicIpAddress.ipAddress,publicIpv6Address.ipAddress,publicVlan[id,primaryRouter.hostname,vlanNumber],privateVlan[id,primaryRouter.hostname,vlanNumber],privateIpAddress.ipAddress,insideVlans[id],memberCount,status.keyName"
+	fwMask        = "id,datacenter,primaryIpAddress,networkVlan.highAvailabilityFirewallFlag,managementCredentials,tagReferences[id,tag[name]]"
+	multiVlanMask = "id,name,networkFirewall[id,customerManagedFlag,datacenter.name,billingItem[orderItem.order.id,activeChildren[categoryCode, description,id]],managementCredentials,firewallType],publicIpAddress.ipAddress,publicIpv6Address.ipAddress,publicVlan[id,primaryRouter.hostname],privateVlan[id,primaryRouter.hostname],privateIpAddress.ipAddress,insideVlans[id],memberCount,status.keyName"
 )
 
 func resourceIBMFirewall() *schema.Resource {
@@ -38,7 +38,20 @@ func resourceIBMFirewall() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"firewall_type": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				ForceNew: true,
+				Default:  "HARDWARE_FIREWALL_DEDICATED",
+				ValidateFunc: validateAllowedStringValue([]string{
+					"HARDWARE_FIREWALL_DEDICATED",
+					"FORTIGATE_SECURITY_APPLIANCE",
+					"HARDWARE_FIREWALL_HIGH_AVAILABILITY",
+					"FORTIGATE_SECURITY_APPLIANCE_HIGH_AVAILABILITY",
+				}),
+			},
+
+			"ha_enabled": {
+				Type:     schema.TypeBool,
+				Optional: true,
 				ForceNew: true,
 			},
 			"public_vlan_id": {
@@ -60,6 +73,14 @@ func resourceIBMFirewall() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"username": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"password": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -68,7 +89,19 @@ func resourceIBMFirewall() *schema.Resource {
 func resourceIBMFirewallCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 
-	keyName := d.Get("firewall_type").(string)
+	keyName := "HARDWARE_FIREWALL_DEDICATED"
+	firewallType := d.Get("firewall_type").(string)
+	haEnabled := d.Get("ha_enabled").(bool)
+	if haEnabled {
+		if firewallType == "HARDWARE_FIREWALL_DEDICATED" {
+			keyName = "HARDWARE_FIREWALL_HIGH_AVAILABILITY"
+		} else {
+			keyName = "FORTIGATE_SECURITY_APPLIANCE_HIGH_AVAILABILITY"
+		}
+	} else {
+		keyName = firewallType
+	}
+
 	publicVlanId := d.Get("public_vlan_id").(int)
 
 	pkg, err := product.GetPackageByType(sess, FwHardwareDedicatedPackageType)
@@ -153,8 +186,13 @@ func resourceIBMFirewallRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.Set("public_vlan_id", *fw.NetworkVlan.Id)
+	d.Set("ha_enabled", *fw.NetworkVlan.HighAvailabilityFirewallFlag)
 	d.Set("location", *fw.Datacenter.Name)
 	d.Set("primary_ip", *fw.PrimaryIpAddress)
+	if fw.ManagementCredentials != nil {
+		d.Set("username", *fw.ManagementCredentials.Username)
+		d.Set("password", *fw.ManagementCredentials.Password)
+	}
 
 	tagRefs := fw.TagReferences
 	tagRefsLen := len(tagRefs)

@@ -6,12 +6,11 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/sl"
 )
 
-func resourceIBMDNSREVERSERecord() *schema.Resource {
+func resourceIBMDNSReverseRecord() *schema.Resource {
 	return &schema.Resource{
 		Exists:   resourceIBMDNSREVERSERecordExists,
 		Create:   resourceIBMDNSREVERSERecordCreate,
@@ -20,16 +19,16 @@ func resourceIBMDNSREVERSERecord() *schema.Resource {
 		Delete:   resourceIBMDNSREVERSERecordDelete,
 		Importer: &schema.ResourceImporter{},
 		Schema: map[string]*schema.Schema{
-			"dns_ipaddress": {
+			"ipaddress": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
-			"dns_hostname": {
+			"hostname": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"dns_ttl": {
+			"ttl": {
 				Type:     schema.TypeInt,
 				Optional: true,
 				DefaultFunc: func() (interface{}, error) {
@@ -45,18 +44,15 @@ func resourceIBMDNSREVERSERecord() *schema.Resource {
 func resourceIBMDNSREVERSERecordCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ClientSession).SoftLayerSession()
 	service := services.GetDnsDomainService(sess.SetRetries(0))
-	Data := sl.String(d.Get("dns_hostname").(string))
-	Ttl := sl.Int(d.Get("dns_ttl").(int))
-	Ipaddress := sl.String(d.Get("dns_ipaddress").(string))
-	var err error
+	Data := sl.String(d.Get("hostname").(string))
+	Ttl := sl.Int(d.Get("ttl").(int))
+	Ipaddress := sl.String(d.Get("ipaddress").(string))
 	var id int
-	var record datatypes.Dns_Domain_ResourceRecord
-	record, err = service.CreatePtrRecord(Ipaddress, Data, Ttl)
+	record, err := service.CreatePtrRecord(Ipaddress, Data, Ttl)
 	if record.Id != nil {
-		log.Printf("record Id is not null")
 		id = *record.Id
 	}
-	log.Printf("id is %d", id)
+
 	if err != nil {
 		return fmt.Errorf("Error creating DNS Reverse %s", err)
 	}
@@ -74,12 +70,11 @@ func resourceIBMDNSREVERSERecordRead(d *schema.ResourceData, meta interface{}) e
 	if err != nil {
 		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
-	log.Printf("id of service inside read %d", id)
-	result, err := service.Id(id).GetObject()
-	if err != nil {
+
+	_, nexterr := service.Id(id).GetObject()
+	if nexterr != nil {
 		return fmt.Errorf("Error retrieving DNS Reverse Record: %s", err)
 	}
-	fmt.Println(result.Id)
 	return nil
 }
 
@@ -94,10 +89,10 @@ func resourceIBMDNSREVERSERecordUpdate(d *schema.ResourceData, meta interface{})
 	if err != nil {
 		return fmt.Errorf("Error retrieving DNS Reverse Record: %s", err)
 	}
-	if data, ok := d.GetOk("dns_hostname"); ok && d.HasChange("dns_hostname") {
+	if data, ok := d.GetOk("hostname"); ok && d.HasChange("hostname") {
 		record.Data = sl.String(data.(string))
 	}
-	if ttl, ok := d.GetOk("dns_ttl"); ok && d.HasChange("dns_ttl") {
+	if ttl, ok := d.GetOk("ttl"); ok && d.HasChange("ttl") {
 		record.Ttl = sl.Int(ttl.(int))
 	}
 	record.IsGatewayAddress = nil

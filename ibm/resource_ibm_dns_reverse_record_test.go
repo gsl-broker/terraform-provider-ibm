@@ -81,29 +81,8 @@ func testAccCheckIBMDNSReverseRecordExists(n string, dns_domain_record *datatype
 func testAccCheckIBMDNSReverseRecordConfigBasic(hostname string) string {
 	return fmt.Sprintf(`
 		resource "ibm_dns_reverse_record" "testreverserecord" {
-			dns_ipaddress="158.175.87.35"
-			dns_hostname="%s"
-			dns_ttl=900
+			ipaddress="158.175.87.35"
+			hostname="%s"
+			ttl=900
 		}`, hostname)
 }
-
-var testAccCheckIBMDNSReverseRecordConfig_all_types = `
-resource "ibm_dns_reverse_record" "testreverserecord" {
-	dns_ipaddress="127.0.0.1"
-	dns_hostname="test.com"
-	dns_ttl=900
-}
-resource "ibm_dns_reverse_record" "testreverserecord" {
-	dns_ipaddress="127.0.0.1"
-	dns_hostname="test.com"
-	dns_ttl=3600
-}
-resource "ibm_dns_reverse_record" "testreverserecord" {
-	dns_ipaddress="127.0.0.1"
-	dns_hostname="test.com"
-	dns_ttl=86400
-}
-resource "ibm_dns_reverse_record" "testreverserecord" {
-	dns_ipaddress="127.0.0.1"
-	dns_hostname="test.com"
-}`

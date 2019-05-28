@@ -54,12 +54,15 @@ The following arguments are supported:
 * `disk_encryption` - (Optional, boolean) Set to `false` to disable encryption on a worker. Default is true.
 * `labels` - (Optional, map) Labels on all the workers in the worker pool.
 * `region` - (Optional, string) The region where the cluster is provisioned. If the region is not specified it will be defaulted to provider region(BM_REGION/BLUEMIX_REGION). To get the list of supported regions please access this [link](https://containers.bluemix.net/v1/regions) and use the alias.
+* `resource_group_id` - (Optional, string) The ID of the resource group.  You can retrieve the value from data source `ibm_resource_group`. If not provided defaults to default resource group.
  
 ## Attribute Reference
 
 The following attributes are exported:
 
-* `id` - The unique identifier of the worker pool resource. The id is composed of \<cluster_name_id\>/\<worker_pool_id\>
+* `id` - The unique identifier of the worker pool resource. The id is composed of \<cluster_name_id\>/\<worker_pool_id\>.<br/>
+**Note**:To reference the worker pool id in other resources use below interpolation syntax.<br/>
+`Ex: ${element(split("/",ibm_container_worker_pool.testacc_workerpool.id),1)}`
 * `state` - Worker pool state.
 * `zones` - List of zones attached to the worker_pool.
    * `zone` - Zone name.

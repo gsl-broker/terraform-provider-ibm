@@ -169,24 +169,6 @@ func validateList(v interface{}, k string) (ws []string, errors []error) {
 	return
 }
 
-func validateEncyptionProtocol(v interface{}, k string) (ws []string, errors []error) {
-	encyptionProtocol := v.(string)
-	if encyptionProtocol != "DES" && encyptionProtocol != "3DES" && encyptionProtocol != "AES128" && encyptionProtocol != "AES192" && encyptionProtocol != "AES256" {
-		errors = append(errors, fmt.Errorf(
-			"%q encryption protocol can be DES or 3DES or AES128 or AES192 or AES256", k))
-	}
-	return
-}
-
-func validateDiffieHellmanGroup(v interface{}, k string) (ws []string, errors []error) {
-	diffieHellmanGroup := v.(int)
-	if diffieHellmanGroup != 0 && diffieHellmanGroup != 1 && diffieHellmanGroup != 2 && diffieHellmanGroup != 5 {
-		errors = append(errors, fmt.Errorf(
-			"%q Diffie Hellman Group can be 0 or 1 or 2 or 5", k))
-	}
-	return
-}
-
 func validatekeylife(v interface{}, k string) (ws []string, errors []error) {
 	keylife := v.(int)
 	if keylife < 120 || keylife > 172800 {
@@ -612,4 +594,104 @@ func validateMinute(start, end int) func(v interface{}, k string) (ws []string, 
 		return
 	}
 	return f
+}
+
+func validateDatacenterOption(v []interface{}, allowedValues []string) error {
+	for _, option := range v {
+		if option == nil {
+			return fmt.Errorf("Provide a valid `datacenter_choice`")
+		}
+		values := option.(map[string]interface{})
+		for k := range values {
+			if !stringInSlice(k, allowedValues) {
+				return fmt.Errorf(
+					"%q Invalid values are provided in `datacenter_choice`. Supported list of keys are (%q)", k, allowedValues)
+			}
+
+		}
+	}
+	return nil
+}
+
+func validateLBTimeout(v interface{}, k string) (ws []string, errors []error) {
+	timeout := v.(int)
+	if timeout <= 0 || timeout > 3600 {
+		errors = append(errors, fmt.Errorf(
+			"%q must be between 1 and 3600",
+			k))
+	}
+	return
+}
+
+// validateRecordType ensures that the dns record type is valid
+func validateRecordType(t string, proxied bool) error {
+	switch t {
+	case "A", "AAAA", "CNAME":
+		return nil
+	case "TXT", "SRV", "LOC", "MX", "NS", "SPF", "CAA", "CERT", "DNSKEY", "DS", "NAPTR", "SMIMEA", "SSHFP", "TLSA", "URI":
+		if !proxied {
+			return nil
+		}
+	default:
+		return fmt.Errorf(
+			`Invalid type %q. Valid types are "A", "AAAA", "CNAME", "TXT", "SRV", "LOC", "MX", "NS", "SPF", "CAA", "CERT", "DNSKEY", "DS", "NAPTR", "SMIMEA", "SSHFP", "TLSA" or "URI".`, t)
+	}
+
+	return fmt.Errorf("Type %q cannot be proxied", t)
+}
+
+// validateRecordName ensures that based on supplied record type, the name content matches
+// Currently only validates A and AAAA types
+func validateRecordName(t string, value string) error {
+	switch t {
+	case "A":
+		// Must be ipv4 addr
+		addr := net.ParseIP(value)
+		if addr == nil || !strings.Contains(value, ".") {
+			return fmt.Errorf("A record must be a valid IPv4 address, got: %q", value)
+		}
+	case "AAAA":
+		// Must be ipv6 addr
+		addr := net.ParseIP(value)
+		if addr == nil || !strings.Contains(value, ":") {
+			return fmt.Errorf("AAAA record must be a valid IPv6 address, got: %q", value)
+		}
+	case "TXT":
+		// Must be printable ASCII
+		for i := 0; i < len(value); i++ {
+			char := value[i]
+			if (char < 0x20) || (0x7F < char) {
+				return fmt.Errorf("TXT record must contain printable ASCII, found: %q", char)
+			}
+		}
+	}
+
+	return nil
+}
+
+func validateVLANName(v interface{}, k string) (ws []string, errors []error) {
+	value := v.(string)
+	if len(value) > 20 {
+		errors = append(errors, fmt.Errorf(
+			"Length provided for '%q' is too long. Maximum length is 20 characters", k))
+	}
+	return
+}
+
+func validateEncyptionProtocol(v interface{}, k string) (ws []string, errors []error) {
+	encyptionProtocol := v.(string)
+	if encyptionProtocol != "DES" && encyptionProtocol != "3DES" && encyptionProtocol != "AES128" && encyptionProtocol != "AES192" && encyptionProtocol != "AES256" {
+		errors = append(errors, fmt.Errorf(
+			"%q encryption protocol can be DES or 3DES or AES128 or AES192 or AES256", k))
+	}
+	return
+}
+
+func validateDiffieHellmanGroup(v interface{}, k string) (ws []string, errors []error) {
+	diffieHellmanGroup := v.(int)
+	if diffieHellmanGroup != 0 && diffieHellmanGroup != 1 && diffieHellmanGroup != 2 && diffieHellmanGroup != 5 {
+		errors = append(errors, fmt.Errorf(
+			"%q Diffie Hellman Group can be 0 or 1 or 2 or 5", k))
+	}
+	return
 }

@@ -199,23 +199,8 @@ func getVPXVersion(id int, sess *session.Session) (string, error) {
 	return strings.Split(*getObjectResult.Description, " ")[3], nil
 }
 
-/*
-Utility function to check if the version value is actually an int
-This is required in case when the version is 11.0
-The check is required since the speed package is CITRIX_NETSCALER_VPX_11_1000MBPS_PLATINUM
-and not CITRIX_NETSCALER_VPX_11_0_1000MBPS_PLATINUM
-*/
-func isIntegral(val float64) bool {
-	return val == float64(int(val))
-}
-
-/*
-Used the function isIntegral to determine the version to be used for forming the VPMPriceItemKeyName
-the findVPXPriceItems was throwing an error : VPX version, speed or plan have incorrect values
-because the getVPXPriceItemKeyName was getting cmputed as CITRIX_NETSCALER_VPX_11_0_1000MBPS_PLATINUM.
-*/
 func getVPXPriceItemKeyName(version string, speed int, plan string) string {
-	name := "CITRIX_NETSCALER_VPX"
+	name := "NETSCALER_VPX"
 	speedMeasurements := "MBPS"
 
 	floatVersion, err := strconv.ParseFloat(version, 10)
@@ -268,7 +253,7 @@ func findVPXPriceItems(version string, speed int, plan string, ipCount int, meta
 
 	for _, item := range items {
 		itemKey := item.KeyName
-		if *itemKey == nadcKey {
+		if strings.Contains(*itemKey, nadcKey) {
 			nadcItemPrice = item.Prices[0]
 		}
 		if *itemKey == ipKey {

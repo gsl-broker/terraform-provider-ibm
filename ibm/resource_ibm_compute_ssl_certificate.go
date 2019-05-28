@@ -118,7 +118,7 @@ func resourceIBMComputeSSLCertificateCreate(d *schema.ResourceData, meta interfa
 		IntermediateCertificate:   sl.String(d.Get("intermediate_certificate").(string)),
 		PrivateKey:                sl.String(d.Get("private_key").(string)),
 		CertificateSigningRequest: sl.String(d.Get("certificate_signing_request").(string)),
-		Notes: sl.String(d.Get("notes").(string)),
+		Notes:                     sl.String(d.Get("notes").(string)),
 	}
 
 	log.Printf("[INFO] Creating Security Certificate")
