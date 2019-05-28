@@ -202,7 +202,7 @@ func Provider() terraform.ResourceProvider {
 			"ibm_subnet":                                resourceIBMSubnet(),
 			"ibm_multi_vlan_firewall":                   resourceIBMMultiVlanFirewall(),
 			"ibm_cdn":                                   resourceIBMCDN(),
-			"ibm_dns_reverse_record":                    resourceIBMDNSREVERSERecord(),
+			"ibm_dns_reverse_record":                    resourceIBMDNSReverseRecord(),
 			"ibm_ssl_certificate":                       resourceIBMSSLCertificate(),
 			"ibm_bandwidth_pool":                        resourceIBMBandwidthPool(),
 			"ibm_firewall_shared":                       resourceIBMFirewallShared(),
