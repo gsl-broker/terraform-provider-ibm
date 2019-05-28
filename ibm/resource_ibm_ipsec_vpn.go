@@ -43,27 +43,33 @@ func resourceIBMIPSecVPN() *schema.Resource {
 			},
 			"phase_one": {
 				Type:     schema.TypeList,
+				MinItems: 1,
+				MaxItems: 1,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"authentication": {
 							Type:         schema.TypeString,
 							Optional:     true,
+							Default:      "MD5",
 							ValidateFunc: validateAuthProtocol,
 						},
 						"encryption": {
 							Type:         schema.TypeString,
 							Optional:     true,
+							Default:      "3DES",
 							ValidateFunc: validateEncyptionProtocol,
 						},
 						"diffie_hellman_group": {
 							Type:         schema.TypeInt,
 							Optional:     true,
+							Default:      2,
 							ValidateFunc: validateDiffieHellmanGroup,
 						},
 						"keylife": {
 							Type:         schema.TypeInt,
 							Optional:     true,
+							Default:      14400,
 							ValidateFunc: validatekeylife,
 						},
 					},
@@ -72,6 +78,8 @@ func resourceIBMIPSecVPN() *schema.Resource {
 			"phase_two": {
 				Type:     schema.TypeList,
 				Optional: true,
+				MinItems: 1,
+				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"authentication": {
@@ -103,6 +111,8 @@ func resourceIBMIPSecVPN() *schema.Resource {
 			},
 			"address_translation": { //Parameters for creating an adress translation
 				Type:     schema.TypeList,
+				MinItems: 1,
+				MaxItems: 1,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -134,12 +144,16 @@ func resourceIBMIPSecVPN() *schema.Resource {
 				Optional: true,
 			},
 			"remote_subnet_id": { //customer subnet id . need atleast one customer subnet id for applying the configuratons
-				Type:     schema.TypeInt,
-				Optional: true,
+				Type:          schema.TypeInt,
+				Optional:      true,
+				ConflictsWith: []string{"remote_subnet"},
 			},
 			"remote_subnet": { //parameters to be populated for creating a customer subnet. Specify only one parameter:- remote subnet/remote subnet id
-				Type:     schema.TypeList,
-				Optional: true,
+				Type:          schema.TypeList,
+				MinItems:      1,
+				MaxItems:      1,
+				Optional:      true,
+				ConflictsWith: []string{"remote_subnet_id"},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"remote_ip_adress": {
@@ -278,6 +292,33 @@ func resourceIBMIPSecVPNRead(d *schema.ResourceData, meta interface{}) error {
 	}
 	d.Set("name", *vpn.Name)
 	d.Set("internal_peer_ip_address", *vpn.InternalPeerIpAddress)
+	if vpn.Datacenter != nil {
+		d.Set("datacenter", *vpn.Datacenter.Name)
+	}
+	d.Set("phase_one", flattenPhaseOneAttributes(&vpn))
+	d.Set("phase_two", flattenPhaseTwoAttributes(&vpn))
+	fwID, err := strconv.Atoi(d.Id())
+	if vpn.AddressTranslations != nil {
+		d.Set("address_translation", flattenaddressTranslation(&vpn, fwID))
+	}
+	if vpn.CustomerSubnets != nil {
+		d.Set("remote_subnet", flattenremoteSubnet(&vpn))
+	}
+	if vpn.PresharedKey != nil {
+		d.Set("preshared_key", *vpn.PresharedKey)
+	}
+	if vpn.CustomerPeerIpAddress != nil {
+		d.Set("customer_peer_ip", *vpn.CustomerPeerIpAddress)
+	}
+	if len(vpn.InternalSubnets) > 0 {
+		d.Set("internal_subnet_id", *vpn.InternalSubnets[0].Id)
+	}
+	if len(vpn.CustomerSubnets) > 0 {
+		d.Set("remote_subnet_id", *vpn.CustomerSubnets[0].Id)
+	}
+	if len(vpn.ServiceSubnets) > 0 {
+		d.Set("service_subnet_id", *vpn.ServiceSubnets[0].Id)
+	}
 	return nil
 }
 
@@ -313,11 +354,11 @@ func resourceIBMIPSecVPNDelete(d *schema.ResourceData, meta interface{}) error {
 	billingItem, err := vpnService.Id(vpnID).GetBillingItem()
 
 	if err != nil {
-		return fmt.Errorf("Error while looking up billing item associated with the firewall: %s", err)
+		return fmt.Errorf("Error while looking up billing item associated with the ipsecvpn: %s", err)
 	}
 
 	if billingItem.Id == nil {
-		return fmt.Errorf("Error while looking up billing item associated with the firewall: No billing item for ID:%d", vpnID)
+		return fmt.Errorf("Error while looking up billing item associated with the ipsecvpn: No billing item for ID:%d", vpnID)
 	}
 
 	success, err := services.GetBillingItemService(sess).Id(*billingItem.Id).CancelService()
