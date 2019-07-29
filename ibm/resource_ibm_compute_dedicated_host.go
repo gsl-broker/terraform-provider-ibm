@@ -84,7 +84,7 @@ func resourceIBMComputeDedicatedHost() *schema.Resource {
 			"wait_time_minutes": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  90,
+				Default:  1440,
 			},
 			"tags": {
 				Type:     schema.TypeSet,
