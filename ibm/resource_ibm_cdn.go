@@ -12,7 +12,7 @@ import (
 	"github.com/softlayer/softlayer-go/services"
 )
 
-const str string = ".cdnedge.bluemix.net"
+const str string = ".cdn.appdomain.cloud"
 
 func resourceIBMCDN() *schema.Resource {
 	return &schema.Resource{
