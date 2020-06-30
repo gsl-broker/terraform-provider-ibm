@@ -23,10 +23,12 @@ import (
 
 const (
 	databaseInstanceSuccessStatus  = "active"
+	databaseInstanceProvisioningStatus = "provisioning"
 	databaseInstanceProgressStatus = "in progress"
 	databaseInstanceInactiveStatus = "inactive"
 	databaseInstanceFailStatus     = "failed"
 	databaseInstanceRemovedStatus  = "removed"
+	databaseInstanceReclamation        = "pending_reclamation"
 )
 
 const (
@@ -1027,7 +1029,7 @@ func waitForDatabaseInstanceCreate(d *schema.ResourceData, meta interface{}, ins
 	}
 
 	stateConf := &resource.StateChangeConf{
-		Pending: []string{databaseInstanceProgressStatus, databaseInstanceInactiveStatus},
+		Pending: []string{databaseInstanceProgressStatus, databaseInstanceInactiveStatus, databaseInstanceProvisioningStatus},
 		Target:  []string{databaseInstanceSuccessStatus},
 		Refresh: func() (interface{}, string, error) {
 			instance, err := rsConClient.ResourceServiceInstance().GetInstance(instanceID)
@@ -1122,7 +1124,7 @@ func waitForDatabaseInstanceDelete(d *schema.ResourceData, meta interface{}) (in
 	instanceID := d.Id()
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{databaseInstanceProgressStatus, databaseInstanceInactiveStatus, databaseInstanceSuccessStatus},
-		Target:  []string{databaseInstanceRemovedStatus},
+		Target:  []string{databaseInstanceRemovedStatus, databaseInstanceReclamation},
 		Refresh: func() (interface{}, string, error) {
 			instance, err := rsConClient.ResourceServiceInstance().GetInstance(instanceID)
 			if err != nil {
