@@ -28,7 +28,7 @@ const (
 	databaseInstanceInactiveStatus = "inactive"
 	databaseInstanceFailStatus     = "failed"
 	databaseInstanceRemovedStatus  = "removed"
-	databaseInstanceReclamation        = "pending_reclamation"
+	databaseInstanceReclamation    = "pending_reclamation"
 )
 
 const (
