@@ -92,6 +92,11 @@ func resourceIBMResourceInstance() *schema.Resource {
 				Computed:    true,
 				Description: "Status of resource instance",
 			},
+			"dashboard_url": {
+				Description: "Dashboard URL to access resource.",
+				Type:        schema.TypeString,
+				Computed:    true,
+			},
 		},
 	}
 }
@@ -214,6 +219,7 @@ func resourceIBMResourceInstanceRead(d *schema.ResourceData, meta interface{}) e
 	d.Set("resource_group_id", instance.ResourceGroupID)
 	d.Set("parameters", flatmap.Flatten(instance.Parameters))
 	d.Set("location", instance.RegionID)
+	d.Set("dashboard_url", instance.DashboardUrl)
 
 	rsCatClient, err := meta.(ClientSession).ResourceCatalogAPI()
 	if err != nil {
