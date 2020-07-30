@@ -22,6 +22,7 @@ const (
 	rsInstanceInactiveStatus = "inactive"
 	rsInstanceFailStatus     = "failed"
 	rsInstanceRemovedStatus  = "removed"
+	rsInstanceReclamation    = "pending_reclamation"
 )
 
 func resourceIBMResourceInstance() *schema.Resource {
@@ -411,7 +412,7 @@ func waitForResourceInstanceDelete(d *schema.ResourceData, meta interface{}) (in
 	instanceID := d.Id()
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{rsInstanceProgressStatus, rsInstanceInactiveStatus, rsInstanceSuccessStatus},
-		Target:  []string{rsInstanceRemovedStatus},
+		Target:  []string{rsInstanceRemovedStatus, rsInstanceReclamation},
 		Refresh: func() (interface{}, string, error) {
 			instance, err := rsConClient.ResourceServiceInstance().GetInstance(instanceID)
 			if err != nil {
