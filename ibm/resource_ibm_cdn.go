@@ -565,7 +565,7 @@ func resourceIBMCDNExists(d *schema.ResourceData, meta interface{}) (bool, error
 	log.Print("Exists response is : ", exists)
 	if err != nil {
 		if apiErr, ok := err.(sl.Error); ok {
-			if apiErr.StatusCode == 404 {
+			if apiErr.StatusCode == 404 || exists == [] || len(exists) == 0 {
 				return false, nil
 			}
 		}
